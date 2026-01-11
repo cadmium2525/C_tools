@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LMF秘伝カウンター</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- PWA Settings -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="LMFカウンター">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f1f5f9;
+            -webkit-tap-highlight-color: transparent;
+            overflow-x: hidden;
+        }
+
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .active-tab {
+            color: #38bdf8;
+            border-bottom: 2px solid #38bdf8;
+        }
+
+        .star-icon {
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: pointer;
+            padding: 2px;
+        }
+
+        .star-icon.active {
+            color: #fbbf24;
+            filter: drop-shadow(0 0 5px rgba(251, 191, 36, 0.6));
+            transform: scale(1.1);
+        }
+
+        .star-icon.inactive {
+            color: #334155;
+        }
+
+        .btn-hover:active {
+            transform: scale(0.96);
+        }
+
+        pre {
+            font-family: monospace;
+            white-space: pre;
+            font-size: 10px;
+        }
+
+        .input-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen pb-4">
+
+    <!-- Header -->
+    <!-- Header & Nav (Sticky Top) -->
+    <div class="sticky top-0 z-50 bg-slate-900/95 backdrop-blur-xl border-b border-slate-800 shadow-lg">
+        <header class="p-3">
+            <h1 class="text-lg font-bold text-center tracking-wider text-sky-400">LMF 秘伝カウンター</h1>
+        </header>
+
+        <!-- Top Navigation Tabs -->
+        <nav class="flex justify-around px-4 pb-0">
+            <button onclick="switchTab('input')"
+                class="nav-item flex-1 py-3 flex flex-col items-center gap-1 transition-colors active-tab"
+                id="nav-input">
+                <span class="text-xs font-bold">入力</span>
+            </button>
+            <button onclick="switchTab('analytics')"
+                class="nav-item flex-1 py-3 flex flex-col items-center gap-1 text-slate-500 transition-colors"
+                id="nav-analytics">
+                <span class="text-xs font-bold">分析</span>
+            </button>
+            <button onclick="switchTab('settings')"
+                class="nav-item flex-1 py-3 flex flex-col items-center gap-1 text-slate-500 transition-colors"
+                id="nav-settings">
+                <span class="text-xs font-bold">設定</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- Main Content -->
+    <main id="app" class="max-w-md mx-auto p-4">
+
+        <!-- Input View -->
+        <section id="view-input" class="space-y-4">
+            <div class="flex justify-between items-end">
+                <div>
+                    <h2 class="text-lg font-semibold">育成記録</h2>
+                    <p class="text-[10px] text-slate-500">発現した秘伝の星をタップ</p>
+                </div>
+                <span id="record-count"
+                    class="text-xs bg-slate-800 px-3 py-1 rounded-full text-slate-400 border border-slate-700">育成:
+                    0回</span>
+            </div>
+
+            <div id="input-list" class="input-grid">
+                <!-- Dynamic Content -->
+            </div>
+
+            <div class="pt-4 pb-10">
+                <button onclick="saveRecord()"
+                    class="w-full py-4 bg-sky-600 hover:bg-sky-500 rounded-2xl font-bold text-lg shadow-xl shadow-sky-900/40 btn-hover transition-all flex items-center justify-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                    </svg>
+                    育成データを保存
+                </button>
+            </div>
+        </section>
+
+        <!-- Analytics View -->
+        <section id="view-analytics" class="hidden space-y-6">
+            <div class="flex border-b border-slate-800">
+                <button onclick="switchStatsSubTab('graph')" id="subtab-graph"
+                    class="flex-1 py-2 text-sm font-bold border-b-2 border-sky-500 text-sky-500">グラフ表示</button>
+                <button onclick="switchStatsSubTab('export')" id="subtab-export"
+                    class="flex-1 py-2 text-sm font-bold border-b-2 border-transparent text-slate-500">データ出力</button>
+            </div>
+
+            <div id="stats-graph-view" class="space-y-4">
+                <div class="glass-card p-4 rounded-3xl">
+                    <canvas id="statsChart"></canvas>
+                </div>
+                <div id="stats-details" class="space-y-3 pb-8">
+                    <!-- Dynamic Content -->
+                </div>
+            </div>
+
+            <div id="stats-export-view" class="hidden space-y-4">
+                <p class="text-[10px] text-slate-400 leading-relaxed">
+                    表形式(TSV)で出力します。コピーしてスプレッドシート等に貼り付けてください。
+                </p>
+                <div class="glass-card p-4 rounded-2xl">
+                    <div class="overflow-x-auto">
+                        <pre id="export-area" class="text-slate-300"></pre>
+                    </div>
+                    <button onclick="copyToClipboard()"
+                        class="mt-4 w-full py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                        </svg>
+                        クリップボードにコピー
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Settings View -->
+        <section id="view-settings" class="hidden space-y-6">
+            <div>
+                <h2 class="text-lg font-semibold mb-2">秘伝リストの編集</h2>
+                <div class="flex gap-2 bg-slate-800/50 p-2 rounded-xl border border-slate-700">
+                    <input type="text" id="new-hiden-name" placeholder="秘伝名を入力"
+                        class="flex-1 bg-transparent border-none p-2 text-sm focus:ring-0 outline-none">
+                    <select id="new-hiden-stars"
+                        class="bg-slate-700 border-none rounded-lg px-2 text-xs font-bold outline-none">
+                        <option value="3">MAX ★3</option>
+                        <option value="6">MAX ★6</option>
+                    </select>
+                    <button onclick="addHiden()"
+                        class="bg-sky-600 w-10 h-10 rounded-lg flex items-center justify-center btn-hover shadow-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div id="settings-list" class="space-y-2">
+                <!-- Dynamic Content -->
+            </div>
+
+            <div class="pt-6 border-t border-slate-800 pb-10">
+                <button type="button" id="reset-button"
+                    class="w-full py-4 bg-red-900/30 text-red-400 border border-red-800/50 rounded-xl text-sm font-bold active:bg-red-900/50 transition-colors">
+                    全記録(カウンター)をリセットする
+                </button>
+                <p class="text-[10px] text-slate-500 mt-2 text-center">※秘伝リストの内容は保持されます</p>
+            </div>
+        </section>
+    </main>
+
+    <!-- Navigation -->
+    <!-- Navigation (Moved to Top) -->
+
+    <!-- Message Toast -->
+    <div id="toast"
+        class="fixed top-20 left-1/2 -translate-x-1/2 bg-sky-500 text-white px-6 py-3 rounded-2xl text-sm font-bold opacity-0 transition-all pointer-events-none z-[60] shadow-xl">
+        メッセージ
+    </div>
+
+    <script>
+        // --- Core State ---
+        let hidenList = [
+            { id: 1, name: '四大大会制覇', maxStars: 3, active: true },
+            { id: 2, name: '四大大会完全制覇', maxStars: 3, active: true },
+            { id: 3, name: 'グレイテスト4', maxStars: 3, active: true },
+            { id: 4, name: 'M-1グランプリ', maxStars: 3, active: true },
+            { id: 5, name: 'ウィナーズ', maxStars: 3, active: true },
+            { id: 6, name: 'ワールドモンスターズ', maxStars: 3, active: true },
+            { id: 7, name: 'ノーブル', maxStars: 6, active: true }
+        ];
+
+        let records = [];
+        let currentSession = {};
+        let chartInstance = null;
+
+        window.onload = () => {
+            loadData();
+            renderInputList();
+            // Attach event listener for reset button explicitly
+            const resetBtn = document.getElementById('reset-button');
+            if (resetBtn) {
+                resetBtn.addEventListener('click', resetOnlyRecords);
+            }
+        };
+
+        function loadData() {
+            const h = localStorage.getItem('lmf_hiden_list_v7');
+            const r = localStorage.getItem('lmf_records_v7');
+            if (h) hidenList = JSON.parse(h);
+            if (r) records = JSON.parse(r);
+            updateRecordCounter();
+        }
+
+        function saveData() {
+            localStorage.setItem('lmf_hiden_list_v7', JSON.stringify(hidenList));
+            localStorage.setItem('lmf_records_v7', JSON.stringify(records));
+            updateRecordCounter();
+        }
+
+        function updateRecordCounter() {
+            document.getElementById('record-count').innerText = `育成: ${records.length}回`;
+        }
+
+        function switchTab(tabId) {
+            ['input', 'analytics', 'settings'].forEach(id => {
+                document.getElementById(`view-${id}`).classList.add('hidden');
+                document.getElementById(`nav-${id}`).classList.remove('active-tab', 'text-sky-400');
+                document.getElementById(`nav-${id}`).classList.add('text-slate-500');
+            });
+            document.getElementById(`view-${tabId}`).classList.remove('hidden');
+            document.getElementById(`nav-${tabId}`).classList.add('active-tab', 'text-sky-400');
+            document.getElementById(`nav-${tabId}`).classList.remove('text-slate-500');
+
+            if (tabId === 'analytics') renderAnalytics();
+            if (tabId === 'settings') renderSettingsList();
+            if (tabId === 'input') renderInputList();
+        }
+
+        function switchStatsSubTab(subTabId) {
+            const g = document.getElementById('stats-graph-view');
+            const e = document.getElementById('stats-export-view');
+            const tg = document.getElementById('subtab-graph');
+            const te = document.getElementById('subtab-export');
+
+            if (subTabId === 'graph') {
+                g.classList.remove('hidden'); e.classList.add('hidden');
+                tg.classList.add('border-sky-500', 'text-sky-500'); tg.classList.remove('border-transparent', 'text-slate-500');
+                te.classList.remove('border-sky-500', 'text-sky-500'); te.classList.add('border-transparent', 'text-slate-500');
+            } else {
+                g.classList.add('hidden'); e.classList.remove('hidden');
+                te.classList.add('border-sky-500', 'text-sky-500'); te.classList.remove('border-transparent', 'text-slate-500');
+                tg.classList.remove('border-sky-500', 'text-sky-500'); tg.classList.add('border-transparent', 'text-slate-500');
+                generateExportData();
+            }
+        }
+
+        // --- Input Logic ---
+        function renderInputList() {
+            const container = document.getElementById('input-list');
+            container.innerHTML = '';
+
+            hidenList.filter(h => h.active).forEach(hiden => {
+                const currentStars = currentSession[hiden.id] || 0;
+                const card = document.createElement('div');
+                card.className = 'glass-card p-2 rounded-xl flex flex-col justify-between h-full';
+
+                card.innerHTML = `
+                    <div class="mb-1.5">
+                        <div class="text-[10px] font-bold text-slate-200 leading-tight truncate">${hiden.name}</div>
+                    </div>
+                `;
+
+                const starsContainer = document.createElement('div');
+                starsContainer.className = 'flex flex-wrap gap-0.5 items-center justify-start';
+
+                for (let i = 1; i <= hiden.maxStars; i++) {
+                    const star = document.createElement('div');
+                    star.className = `star-icon ${i <= currentStars ? 'active' : 'inactive'}`;
+                    star.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
+                            <path d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.007 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006z" />
+                        </svg>
+                    `;
+                    star.onclick = (e) => {
+                        e.stopPropagation();
+                        handleStarToggle(hiden.id, i);
+                    };
+                    starsContainer.appendChild(star);
+                }
+
+                card.appendChild(starsContainer);
+                container.appendChild(card);
+            });
+        }
+
+        function handleStarToggle(hidenId, level) {
+            if (currentSession[hidenId] === level) {
+                currentSession[hidenId] = 0;
+            } else {
+                currentSession[hidenId] = level;
+            }
+            renderInputList();
+        }
+
+        function saveRecord() {
+            if (Object.keys(currentSession).length === 0 || !Object.values(currentSession).some(v => v > 0)) {
+                showToast("秘伝が選択されていません", true);
+                return;
+            }
+            records.push({ timestamp: new Date().toISOString(), data: { ...currentSession } });
+            currentSession = {};
+            saveData();
+            renderInputList();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            showToast("記録を保存しました");
+        }
+
+        // --- Analytics Logic ---
+        function renderAnalytics() {
+            const container = document.getElementById('stats-details');
+            container.innerHTML = '';
+            const total = records.length;
+            if (total === 0) {
+                container.innerHTML = '<div class="text-center py-10 text-slate-500 text-sm">データがありません</div>';
+                if (chartInstance) chartInstance.destroy();
+                return;
+            }
+
+            const activeHidens = hidenList.filter(h => h.active);
+            const stats = activeHidens.map(h => {
+                const starCounts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+                let sum = 0;
+                records.forEach(r => {
+                    const s = r.data[h.id];
+                    if (s > 0) {
+                        starCounts[s]++;
+                        sum++;
+                    }
+                });
+                return { ...h, starCounts, totalCount: sum, percent: ((sum / total) * 100).toFixed(1) };
+            });
+
+            stats.forEach(s => {
+                const card = document.createElement('div');
+                card.className = 'glass-card p-4 rounded-2xl space-y-3';
+
+                let detailHtml = `<div class="grid grid-cols-2 gap-2">`;
+                for (let i = 1; i <= s.maxStars; i++) {
+                    const singleRate = ((s.starCounts[i] / total) * 100).toFixed(1);
+                    detailHtml += `
+                        <div class="bg-slate-800/50 rounded-lg p-2 border border-slate-700/50 flex flex-col justify-center">
+                            <div class="flex justify-between items-center mb-0.5">
+                                <span class="text-[9px] text-slate-500">★${i}</span>
+                                <span class="text-[9px] font-bold text-sky-500">${singleRate}%</span>
+                            </div>
+                            <div class="text-xs font-bold text-slate-300">${s.starCounts[i]}回</div>
+                        </div>
+                    `;
+                }
+                detailHtml += `</div>`;
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <div class="text-sm font-bold text-slate-200">${s.name}</div>
+                        <div class="text-right">
+                            <div class="text-sky-400 font-bold text-lg leading-none">${s.percent}%</div>
+                            <div class="text-[9px] text-slate-500 mt-1">${s.totalCount} / ${total}回</div>
+                        </div>
+                    </div>
+                    ${detailHtml}
+                `;
+                container.appendChild(card);
+            });
+
+            updateChart(stats);
+        }
+
+        function updateChart(stats) {
+            const ctx = document.getElementById('statsChart').getContext('2d');
+            if (chartInstance) chartInstance.destroy();
+
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: stats.map(s => s.name),
+                    datasets: [{
+                        label: '発現率 (%)',
+                        data: stats.map(s => s.percent),
+                        backgroundColor: 'rgba(56, 189, 248, 0.4)',
+                        borderColor: '#38bdf8',
+                        borderWidth: 2,
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    scales: {
+                        x: { beginAtZero: true, max: 100, ticks: { color: '#64748b', font: { size: 9 } } },
+                        y: { ticks: { color: '#f1f5f9', font: { size: 10 }, autoSkip: false } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        function generateExportData() {
+            const total = records.length;
+            if (total === 0) {
+                document.getElementById('export-area').innerText = "データがありません";
+                return;
+            }
+            let tsv = "秘伝名\t★1\t★2\t★3\t★4\t★5\t★6\t合計発現数\t発現率\t総育成数\n";
+            hidenList.forEach(h => {
+                const sc = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+                let sum = 0;
+                records.forEach(r => { if (r.data[h.id] > 0) { sc[r.data[h.id]]++; sum++; } });
+                tsv += `${h.name}\t${sc[1]}\t${sc[2]}\t${sc[3]}\t${sc[4]}\t${sc[5]}\t${sc[6]}\t${sum}\t${((sum / total) * 100).toFixed(1)}%\t${total}\n`;
+            });
+            document.getElementById('export-area').innerText = tsv;
+        }
+
+        function copyToClipboard() {
+            const text = document.getElementById('export-area').innerText;
+            const temp = document.createElement('textarea');
+            temp.value = text;
+            document.body.appendChild(temp);
+            temp.select();
+            document.execCommand('copy');
+            document.body.removeChild(temp);
+            showToast("コピーしました");
+        }
+
+        // --- Settings Logic ---
+        function renderSettingsList() {
+            const container = document.getElementById('settings-list');
+            container.innerHTML = '';
+            hidenList.forEach((h, index) => {
+                const item = document.createElement('div');
+                item.className = `p-3 rounded-xl flex items-center justify-between border ${h.active ? 'bg-slate-800/40 border-slate-700' : 'bg-slate-900/40 border-slate-800 opacity-60'}`;
+                item.innerHTML = `
+                    <div class="flex items-center gap-3 flex-1 overflow-hidden">
+                        <input type="checkbox" ${h.active ? 'checked' : ''} onchange="toggleHiden(${h.id})" class="w-4 h-4 rounded-lg accent-sky-500">
+                        <div class="truncate">
+                            <div class="text-xs font-bold text-slate-200 truncate">${h.name}</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <button onclick="moveHiden(${index}, -1)" class="p-1.5 text-slate-500 hover:text-sky-400 bg-slate-800/50 rounded ${index === 0 ? 'opacity-20 pointer-events-none' : ''}">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" /></svg>
+                        </button>
+                        <button onclick="moveHiden(${index}, 1)" class="p-1.5 text-slate-500 hover:text-sky-400 bg-slate-800/50 rounded ${index === hidenList.length - 1 ? 'opacity-20 pointer-events-none' : ''}">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                        </button>
+                        <button onclick="deleteHiden(${h.id})" class="ml-1 p-1.5 text-slate-600 hover:text-red-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function moveHiden(index, direction) {
+            const target = index + direction;
+            if (target < 0 || target >= hidenList.length) return;
+            const temp = hidenList[index];
+            hidenList[index] = hidenList[target];
+            hidenList[target] = temp;
+            saveData();
+            renderSettingsList();
+        }
+
+        function addHiden() {
+            const name = document.getElementById('new-hiden-name').value.trim();
+            const stars = parseInt(document.getElementById('new-hiden-stars').value);
+            if (!name) return;
+            hidenList.push({ id: Date.now(), name, maxStars: stars, active: true });
+            document.getElementById('new-hiden-name').value = '';
+            saveData();
+            renderSettingsList();
+            showToast("追加しました");
+        }
+
+        function toggleHiden(id) {
+            const h = hidenList.find(h => h.id === id);
+            if (h) { h.active = !h.active; saveData(); }
+        }
+
+        function deleteHiden(id) {
+            if (confirm("この秘伝を削除しますか？")) {
+                hidenList = hidenList.filter(h => h.id !== id);
+                saveData();
+                renderSettingsList();
+            }
+        }
+
+        // リセット機能
+        function resetOnlyRecords() {
+            // 確認ダイアログ
+            if (confirm("【確認】\n保存された育成記録のみを全て消去します。\n秘伝リストの設定は保持されます。\n\n本当によろしいですか？")) {
+                records = [];
+                saveData();
+                updateRecordCounter();
+                showToast("カウンターをリセットしました");
+
+                // 分析ビューが表示されている場合は再描画
+                if (!document.getElementById('view-analytics').classList.contains('hidden')) {
+                    renderAnalytics();
+                }
+            }
+        }
+
+        function showToast(msg, isError = false) {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.style.backgroundColor = isError ? '#dc2626' : '#0ea5e9';
+            toast.classList.replace('opacity-0', 'opacity-100');
+            setTimeout(() => toast.classList.replace('opacity-100', 'opacity-0'), 2000);
+        }
+    </script>
+</body>
+
+</html>

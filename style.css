@@ -1,0 +1,113 @@
+:root {
+    --bg-color: #0f172a; /* Slate 900 */
+    --nav-bg: rgba(15, 23, 42, 0.95);
+    --nav-border: #1e293b; /* Slate 800 */
+    --accent-color: #38bdf8; /* Sky 400 */
+    --text-muted: #64748b; /* Slate 500 */
+    --text-light: #f1f5f9; /* Slate 100 */
+    --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--bg-color);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    overflow: hidden; /* Prevent scrolling on the shell itself */
+}
+
+/* --- Main App Container --- */
+#app-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: calc(100% - 60px - var(--safe-area-bottom)); /* Adjust for bottom nav */
+    overflow: hidden;
+}
+
+.app-frame {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: none; /* Hidden by default */
+    background-color: var(--bg-color);
+}
+
+.app-frame.active {
+    display: block;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* --- Bottom Navigation --- */
+#bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: calc(60px + var(--safe-area-bottom));
+    background-color: var(--nav-bg);
+    border-top: 1px solid var(--nav-border);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    display: flex;
+    justify-content: space-around;
+    padding-bottom: var(--safe-area-bottom);
+    z-index: 1000;
+}
+
+.nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 5px 0;
+}
+
+.nav-item:active {
+    transform: scale(0.95);
+}
+
+.nav-item.active {
+    color: var(--accent-color);
+}
+
+.icon-box {
+    width: 24px;
+    height: 24px;
+    margin-bottom: 4px;
+}
+
+.icon-box svg {
+    width: 100%;
+    height: 100%;
+}
+
+.nav-label {
+    font-size: 10px;
+    font-weight: 600;
+}
+
+/* --- Iframe Specific Adjustments --- */
+/* Ensure iframes have a consistent background before loading */
+iframe {
+    background-color: var(--bg-color);
+}

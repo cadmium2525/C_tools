@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>共通秘伝チェッカー</title>
+    <script>
+        function onOpenCvReady() {
+            window.cvLoaded = true;
+            document.dispatchEvent(new Event('cv-ready'));
+        }
+    </script>
+    <script async src="https://docs.opencv.org/4.x/opencv.js" onload="onOpenCvReady();"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #020617;
+            color: #f8fafc;
+            font-family: 'Outfit', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .glass {
+            background: rgba(30, 41, 59, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+        }
+
+        .tab-active {
+            border-bottom: 2px solid #818cf8;
+            color: #818cf8;
+            text-shadow: 0 0 10px rgba(129, 140, 248, 0.5);
+        }
+
+        .btn-tag {
+            font-size: 11px;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #1e293b;
+            background: #0f172a;
+            width: 100%;
+            text-align: left;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .btn-tag:active {
+            transform: scale(0.98);
+        }
+
+        .tag-on {
+            background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
+            color: white;
+            border-color: #6366f1;
+            box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4);
+        }
+
+        .tag-on::after {
+            content: '✓';
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        .sticky-result {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            transition: transform 0.3s ease-out;
+            transform: translateY(100%);
+        }
+
+        .sticky-result.show {
+            transform: translateY(0);
+        }
+
+        .trait-preview {
+            height: 40px;
+            width: 40px;
+            object-fit: contain;
+            background: #000;
+            border-radius: 6px;
+            border: 1px solid #334155;
+        }
+
+        #cv-status {
+            font-size: 10px;
+            color: #6366f1;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        #cv-status::before {
+            content: '';
+            display: block;
+            width: 6px;
+            height: 6px;
+            background: currentColor;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 0.5;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 1;
+                transform: scale(1.2);
+            }
+
+            100% {
+                opacity: 0.5;
+                transform: scale(1);
+            }
+        }
+
+        /* Modal & Cropper */
+        .modal {
+            position: fixed;
+            inset: 0;
+            z-index: 200;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+
+        .modal.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .cropper-container {
+            max-height: 70vh;
+            flex: 1;
+            background: #000;
+        }
+
+        .cropper-view-box,
+        .cropper-face {
+            border-radius: 0;
+            outline-color: #6366f1;
+            outline-width: 2px;
+        }
+    </style>
+</head>
+
+<body class="pb-48 select-none">
+
+    <header class="p-4 glass sticky top-0 z-50 flex justify-between items-center backdrop-blur-xl bg-slate-900/80">
+        <div>
+            <h1
+                class="text-xl font-black italic tracking-wide bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-cyan-300">
+                共通秘伝チェッカー</h1>
+            <div id="cv-status" class="mt-1">OpenCV Initializing...</div>
+        </div>
+        <div class="flex gap-6 text-sm font-bold">
+            <button onclick="switchTab('main')" id="tab-main"
+                class="tab-active py-2 px-1 transition-colors">SCAN</button>
+            <button onclick="switchTab('settings')" id="tab-settings"
+                class="py-2 px-1 text-slate-500 hover:text-indigo-300 transition-colors">CONFIG</button>
+        </div>
+    </header>
+
+    <main id="view-main" class="p-4 space-y-6 max-w-2xl mx-auto">
+        <div
+            class="upload-zone p-10 text-center glass rounded-[2rem] border-2 border-dashed border-indigo-500/30 relative hover:border-indigo-500/60 transition-colors group">
+            <input type="file" id="imageInput" multiple accept="image/*"
+                class="absolute inset-0 opacity-0 cursor-pointer z-10" disabled>
+            <div class="space-y-3 pointer-events-none group-hover:scale-105 transition-transform duration-300">
+                <div
+                    class="w-16 h-16 bg-indigo-500/10 rounded-full flex items-center justify-center mx-auto text-indigo-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                        stroke="currentColor" class="w-8 h-8">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                    </svg>
+                </div>
+                <div>
+                    <p class="text-base font-bold text-slate-200">Select Screenshots</p>
+                    <p class="text-xs text-slate-500 mt-1 uppercase tracking-wider font-semibold">Multiple Images
+                        Supported</p>
+                </div>
+            </div>
+        </div>
+        <p class="text-slate-500 text-xs mt-2 text-center">※ 複数体のモンスターを認識するのは難しいため、スクリーンショットは1体ずつ分けてアップロードしてください。</p>
+
+        <div id="status" class="hidden text-center p-4 glass rounded-xl">
+            <div class="animate-spin w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full mx-auto mb-2">
+            </div>
+            <p class="text-xs text-indigo-300 font-bold tracking-widest animate-pulse">ANALYZING...</p>
+        </div>
+
+        <div id="mainContainer" class="space-y-6"></div>
+    </main>
+
+    <section id="view-settings" class="hidden p-4 space-y-6 max-w-2xl mx-auto">
+        <div class="glass rounded-2xl p-5 border border-indigo-500/20">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2">
+                    <div class="w-1 h-6 bg-indigo-500 rounded-full"></div>
+                    <h2 class="text-sm font-bold text-slate-200">秘伝を追加</h2>
+                </div>
+                <button onclick="openHelp()"
+                    class="flex items-center gap-1 px-3 py-1 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded-full text-[10px] font-bold transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                        stroke="currentColor" class="w-3 h-3">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
+                    </svg>
+                    HELP
+                </button>
+            </div>
+            <div class="space-y-4">
+                <input type="text" id="newTraitName" placeholder="追加する秘伝名を入力"
+                    class="w-full bg-slate-950/50 border border-slate-700/50 rounded-xl p-4 text-sm text-slate-200 outline-none focus:border-indigo-500 transition-colors placeholder:text-slate-600">
+                <label
+                    class="block w-full p-4 bg-slate-950/50 border border-slate-700/50 rounded-xl text-center cursor-pointer hover:bg-slate-900/50 transition-colors">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Select Source Image</span>
+                    <input type="file" id="traitImageInput" accept="image/*" class="hidden">
+                </label>
+            </div>
+        </div>
+
+        <div class="flex items-center justify-between px-2">
+            <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest">Registered Traits</h3>
+            <span id="traitCount" class="text-xs font-mono text-slate-600">0 ITEMS</span>
+        </div>
+        <div id="traitList" class="grid grid-cols-1 gap-3"></div>
+    </section>
+
+    <!-- Results Footer -->
+    <div id="resultsBar"
+        class="sticky-result glass p-6 rounded-t-[2.5rem] border-t border-indigo-500/20 backdrop-blur-2xl bg-slate-900/90 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
+        <div class="flex justify-around items-center max-w-md mx-auto relative z-10">
+            <div class="text-center group">
+                <p
+                    class="text-[10px] text-indigo-300/70 font-bold mb-1 uppercase tracking-widest group-hover:text-indigo-400 transition-colors">
+                    共通秘伝Ⅲ</p>
+                <p id="h3-count"
+                    class="text-4xl font-black text-indigo-400 drop-shadow-[0_0_15px_rgba(129,140,248,0.3)] tabular-nums">
+                    0</p>
+            </div>
+            <div class="w-px h-12 bg-slate-700/50"></div>
+            <div class="text-center group">
+                <p
+                    class="text-[10px] text-yellow-500/70 font-bold mb-1 uppercase tracking-widest group-hover:text-yellow-400 transition-colors">
+                    共通秘伝Ⅱ</p>
+                <p id="h2-count"
+                    class="text-4xl font-black text-yellow-500 drop-shadow-[0_0_15px_rgba(234,179,8,0.3)] tabular-nums">
+                    0</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cropper Modal -->
+    <div id="cropModal" class="modal">
+        <div class="p-4 glass flex justify-between items-center z-50">
+            <h3 class="font-bold text-sm">Crop Trait Stars</h3>
+            <div class="flex gap-3">
+                <button onclick="closeCropper()"
+                    class="text-xs font-bold text-slate-400 hover:text-white px-3 py-2">CANCEL</button>
+                <button onclick="saveCrop()"
+                    class="text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg shadow-lg shadow-indigo-500/20 transition-all">SAVE
+                    TRAIT</button>
+            </div>
+        </div>
+        <div class="relative flex-1 bg-black overflow-hidden flex items-center justify-center">
+            <img id="cropTarget" class="max-w-full max-h-full" style="display:block;">
+        </div>
+        <div class="p-4 glass text-center">
+            <p class="text-xs text-slate-400">Drag to crop just the stars area.</p>
+        </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div id="helpModal" class="modal flex items-center justify-center p-4">
+        <div class="glass max-w-lg w-full max-h-[90vh] overflow-y-auto rounded-2xl relative">
+            <div
+                class="p-4 border-b border-white/10 flex justify-between items-center sticky top-0 bg-slate-900/90 backdrop-blur z-10">
+                <h3 class="font-bold text-lg text-white">使い方</h3>
+                <button onclick="closeHelp()"
+                    class="p-2 hover:bg-white/10 rounded-full text-slate-400 hover:text-white transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                        stroke="currentColor" class="w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="p-0">
+                <img src="img/manual.png" alt="Manual" class="w-full h-auto block opacity-80">
+            </div>
+            <div class="p-6 bg-slate-900/80">
+                <div class="text-sm leading-relaxed text-slate-300 space-y-4 font-bold">
+                    <p class="p-3 bg-indigo-500/10 border border-indigo-500/30 rounded-lg">
+                        秘伝を追加する場合、上の箇所のスクリーンショットを使用してアップロード時にトリミングしてください。<br>
+                        この時、画質が下がらないように拡大しないようにしてください。
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast"
+        class="fixed top-24 left-1/2 -translate-x-1/2 glass px-6 py-3 rounded-full shadow-2xl transition-all duration-300 opacity-0 translate-y-[-20px] pointer-events-none z-[150] flex items-center gap-3 min-w-max">
+        <span class="text-xl">⚠️</span>
+        <span id="toastMsg" class="text-sm font-bold text-slate-100">Notification</span>
+    </div>
+
+    <script>
+        const DB_NAME = 'MF_InheritDB_Img_V2';
+        const STORE_NAME = 'traits';
+        // PRESETSに「六英雄杯・煌」「六英雄杯・翠」「桔梗賞制覇」を追加
+
+
+        // ファイル名と実際のファイルが異なる可能性があるため、ディレクトリリストに基づいてマッピングを行う
+        // ディレクトリにあるファイル名を使う
+        const PRESET_DATA = {
+            "M-1グランプリ": "img/M-1_GP.png",
+            "ウィナーズ杯": "img/Winners_Cup.png",
+            "グレイテスト4": "img/Greatest_4.png",
+            "モンスターダービー": "img/Monster_Derby.png",
+            "ワールドモンスターズ杯": "img/World_Monsters_Cup.png",
+            "六英雄杯・煌": "img/Six_Heroes_Cup_Kou.png",
+            "六英雄杯・翠": "img/Six_Heroes_Cup_Sui.png",
+            "四大大会制覇": "img/Four_Major_Tournaments.png",
+            "四大大会完全制覇": "img/Four_Major_Tournaments_Complete.png",
+            "桔梗賞制覇": "img/Kikyo_Prize.png"
+        };
+
+        let db, cvReady = false;
+        let imageData = [];
+        let cropper = null;
+        let pendingFile = null;
+
+        // Main Initialization
+        function initEngine() {
+            if (cvReady) return;
+            cvReady = true;
+            const status = document.getElementById('cv-status');
+            status.innerText = 'ENGINE ONLINE';
+            status.classList.add('text-green-400');
+            status.style.textShadow = '0 0 10px rgba(74, 222, 128, 0.5)';
+            document.getElementById('imageInput').disabled = false;
+            initDB();
+        }
+
+        if (window.cvLoaded) {
+            initEngine();
+        } else {
+            document.addEventListener('cv-ready', initEngine);
+        }
+
+        function initDB() {
+            const request = indexedDB.open(DB_NAME, 2);
+            request.onupgradeneeded = (e) => {
+                db = e.target.result;
+                if (!db.objectStoreNames.contains(STORE_NAME)) {
+                    db.createObjectStore(STORE_NAME, { keyPath: 'name' });
+                }
+            };
+            request.onsuccess = (e) => {
+                db = e.target.result;
+                loadPresets();
+                renderTraitList();
+            };
+        }
+
+        async function loadPresets() {
+            const HIGH_THRESH_TRAITS = [
+                "六英雄杯・煌", "六英雄杯・翠", "六英雄杯・蒼",
+                "六英雄杯・紅", "六英雄杯・冥", "六英雄杯・琥"
+            ];
+
+            for (const [name, base64] of Object.entries(PRESET_DATA)) {
+                const transaction = db.transaction([STORE_NAME], 'readonly');
+                const check = await new Promise(r => {
+                    transaction.objectStore(STORE_NAME).get(name).onsuccess = (ev) => r(ev.target.result);
+                });
+
+                // Determine threshold
+                let thresh = 0.7;
+                if (HIGH_THRESH_TRAITS.includes(name)) thresh = 0.85;
+
+                if (!check) {
+                    try {
+                        const writeTx = db.transaction([STORE_NAME], 'readwrite');
+                        writeTx.objectStore(STORE_NAME).put({ name: name, image: base64, isPreset: true, threshold: thresh });
+                    } catch (e) { console.log(name + " load failed"); }
+                } else if (check.threshold === undefined) {
+                    // Migration: Add threshold if missing
+                    try {
+                        const writeTx = db.transaction([STORE_NAME], 'readwrite');
+                        check.threshold = thresh;
+                        writeTx.objectStore(STORE_NAME).put(check);
+                    } catch (e) { }
+                }
+            }
+            renderTraitList();
+        }
+
+        async function urlToBase64(url) {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('Network response was not ok');
+            const blob = await response.blob();
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = msg;
+            toast.classList.remove('opacity-0', 'translate-y-[-20px]');
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-[-20px]');
+            }, 3000);
+        }
+
+        // ---------------------------------------------------------
+        // Core Logic
+        // ---------------------------------------------------------
+        // ---------------------------------------------------------
+        // Core Logic: Multi-Scale Matching
+        // ---------------------------------------------------------
+        const TRAIT_THRESHOLDS = {
+            "六英雄杯・煌": 0.85,
+            "六英雄杯・翠": 0.85,
+            "六英雄杯・蒼": 0.85,
+            "六英雄杯・紅": 0.85,
+            "六英雄杯・冥": 0.85,
+            "六英雄杯・琥": 0.85
+        };
+        const DEFAULT_THRESHOLD = 0.7;
+
+        // ---------------------------------------------------------
+        // Core Logic: Multi-Scale & Multi-Instance Matching
+        // ---------------------------------------------------------
+        async function matchTraits(screenshotImg, masterTraits) {
+            let foundCounts = {}; // name -> count
+            let src = cv.imread(screenshotImg);
+            cv.cvtColor(src, src, cv.COLOR_RGBA2GRAY, 0);
+
+            // Pre-calculate scales to try: 0.5x to 1.5x in 10% increments
+            // This covers most resolution differences between devices
+            const scales = [1.0, 0.9, 1.1, 0.8, 1.2, 0.7, 1.3, 0.6, 1.4, 0.5, 1.5];
+
+            for (const trait of masterTraits) {
+                let templImg = await htmlImgFromBase64(trait.image);
+                let originalTempl = cv.imread(templImg);
+                cv.cvtColor(originalTempl, originalTempl, cv.COLOR_RGBA2GRAY, 0);
+
+                let bestMaxVal = -1;
+                let bestScale = 1.0;
+
+                // 1. Scan scales to find the best match score and scale
+                for (const scale of scales) {
+                    // Skip if scale makes template too small (e.g. < 20px)
+                    if (originalTempl.cols * scale < 20 || originalTempl.rows * scale < 20) continue;
+
+                    let dsize = new cv.Size(Math.round(originalTempl.cols * scale), Math.round(originalTempl.rows * scale));
+
+                    // Skip if scaled template is larger than source
+                    if (dsize.width > src.cols || dsize.height > src.rows) continue;
+
+                    let templ = new cv.Mat();
+                    cv.resize(originalTempl, templ, dsize, 0, 0, cv.INTER_AREA);
+
+                    let dst = new cv.Mat();
+                    let mask = new cv.Mat();
+
+                    try {
+                        cv.matchTemplate(src, templ, dst, cv.TM_CCOEFF_NORMED, mask);
+                        let result = cv.minMaxLoc(dst, mask);
+
+                        if (result.maxVal > bestMaxVal) {
+                            bestMaxVal = result.maxVal;
+                            bestScale = scale;
+                        }
+                    } catch (e) {
+                        // Ignore individual scale errors
+                    } finally {
+                        dst.delete(); mask.delete(); templ.delete();
+                    }
+                }
+
+                // 2. Check if the best match passes the custom or default threshold
+                const defaultBase = trait.name.includes("六英雄杯") ? 0.85 : 0.7;
+                let threshold = trait.threshold || TRAIT_THRESHOLDS[trait.name] || defaultBase;
+
+                if (bestMaxVal > threshold) {
+                    // Found at least one. Now performing multi-instance detection at the best scale.
+                    // Re-generate template at best scale
+                    let dsize = new cv.Size(Math.round(originalTempl.cols * bestScale), Math.round(originalTempl.rows * bestScale));
+                    let templ = new cv.Mat();
+                    cv.resize(originalTempl, templ, dsize, 0, 0, cv.INTER_AREA);
+
+                    let dst = new cv.Mat();
+                    let mask = new cv.Mat();
+                    cv.matchTemplate(src, templ, dst, cv.TM_CCOEFF_NORMED, mask);
+
+                    let count = 0;
+                    const max_iter = 20; // Maximum limit per trait per image
+
+                    while (count < max_iter) {
+                        let res = cv.minMaxLoc(dst, mask);
+                        if (res.maxVal < threshold) break;
+
+                        count++;
+
+                        // Mask out this match so we can find the next one
+                        // Draw a filled black rectangle over the matched area in the result matrix
+                        let pt = res.maxLoc;
+                        let p1 = new cv.Point(pt.x, pt.y);
+                        // Mask dimensions
+                        let p2 = new cv.Point(pt.x + templ.cols, pt.y + templ.rows);
+
+                        // -1 means filled
+                        cv.rectangle(dst, p1, p2, [0, 0, 0, 0], -1);
+                    }
+
+                    if (count > 0) {
+                        foundCounts[trait.name] = count;
+                        console.log(`Matched: ${trait.name} (Count: ${count}, BestScore: ${bestMaxVal.toFixed(2)})`);
+                    }
+
+                    dst.delete(); mask.delete(); templ.delete();
+                }
+                originalTempl.delete();
+            }
+            src.delete();
+            return foundCounts;
+        }
+
+        function htmlImgFromBase64(base64) {
+            return new Promise(resolve => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.src = base64;
+            });
+        }
+
+        const imageInput = document.getElementById('imageInput');
+        let currentUniqueFiles = []; // Legacy support
+        let orderedFiles = []; // For reordering
+
+        imageInput.addEventListener('change', async (e) => {
+            if (!cvReady) return;
+            const files = Array.from(e.target.files);
+            if (files.length === 0) return;
+
+            const uniqueFiles = [];
+            const fileKeys = new Set();
+            let dupCount = 0;
+
+            for (const f of files) {
+                const key = `${f.name}-${f.size}`;
+                if (fileKeys.has(key)) {
+                    dupCount++;
+                } else {
+                    fileKeys.add(key);
+                    uniqueFiles.push(f);
+                }
+            }
+
+            if (dupCount > 0) {
+                showToast(`${dupCount} duplicate image(s) ignored.`);
+            }
+
+            if (uniqueFiles.length === 0) return;
+
+            currentUniqueFiles = uniqueFiles; // Keep for merging
+
+            const status = document.getElementById('status');
+            const container = document.getElementById('mainContainer');
+            const resBar = document.getElementById('resultsBar');
+            const mergeBtn = document.getElementById('mergeBtnContainer');
+
+            status.classList.remove('hidden');
+            container.innerHTML = "";
+            imageData = [];
+            resBar.classList.remove('show');
+
+            // Clear or hide reorder container if exists
+            const reorderEl = document.getElementById('reorderContainer');
+            if (reorderEl) reorderEl.innerHTML = '';
+
+            if (mergeBtn) mergeBtn.classList.add('hidden');
+
+            // Process
+            const allTraits = await new Promise(r => {
+                db.transaction([STORE_NAME], 'readonly').objectStore(STORE_NAME).getAll().onsuccess = (ev) => r(ev.target.result);
+            });
+
+            try {
+                for (let i = 0; i < uniqueFiles.length; i++) {
+                    const imgUrl = URL.createObjectURL(uniqueFiles[i]);
+                    const img = await htmlImgFromBase64(imgUrl);
+                    const foundCounts = await matchTraits(img, allTraits);
+
+                    // Logic: "四大大会完全制覇" overrides "四大大会制覇"
+                    if (foundCounts["四大大会完全制覇"]) delete foundCounts["四大大会制覇"];
+
+                    let selection = {};
+                    // Pre-fill found ones, others false
+                    allTraits.forEach(t => selection[t.name] = !!foundCounts[t.name]);
+
+                    imageData.push(selection);
+                    createCard(i, img.src, allTraits.map(t => t.name), uniqueFiles[i].name);
+                }
+                updateCount();
+                resBar.classList.remove('hidden');
+                setTimeout(() => resBar.classList.add('show'), 100);
+
+                if (uniqueFiles.length > 1) {
+                    // Initialize ordered files
+                    orderedFiles = [...uniqueFiles];
+                    renderMergeButton();
+                    renderReorderUI();
+                }
+            } catch (e) {
+                console.error(e);
+                showToast("Analyzing failed. Try again.");
+            } finally {
+                status.classList.add('hidden');
+                imageInput.value = ''; // Reset input to allow re-selecting same files
+            }
+        });
+
+        function renderMergeButton() {
+            let btnContainer = document.getElementById('mergeBtnContainer');
+            if (!btnContainer) {
+                btnContainer = document.createElement('div');
+                btnContainer.id = 'mergeBtnContainer';
+                btnContainer.className = "text-center mb-6";
+                // Insert before mainContainer
+                const main = document.getElementById('view-main');
+                main.insertBefore(btnContainer, document.getElementById('mainContainer'));
+            }
+            btnContainer.innerHTML = `
+                <button onclick="mergeAllImages()" class="bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold py-3 px-8 rounded-full shadow-lg hover:scale-105 transition-transform flex items-center gap-2 mx-auto">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                    </svg>
+                    MERGE IMAGES & SAVE
+                </button>
+            `;
+            btnContainer.classList.remove('hidden');
+        }
+
+
+
+        function renderReorderUI() {
+            let container = document.getElementById('reorderContainer');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'reorderContainer';
+                container.className = "mb-6 space-y-2 max-w-lg mx-auto";
+
+                // Insert after merge button
+                const mergeBtn = document.getElementById('mergeBtnContainer');
+                if (mergeBtn) {
+                    mergeBtn.parentNode.insertBefore(container, mergeBtn.nextSibling);
+                }
+            }
+
+            container.innerHTML = `
+                <div class="glass p-4 rounded-xl border border-slate-700/50">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 text-center">Reorder Images for Merge</h3>
+                    <div id="reorderList" class="space-y-2"></div>
+                </div>
+            `;
+
+            const list = document.getElementById('reorderList');
+
+            orderedFiles.forEach((file, idx) => {
+                const row = document.createElement('div');
+                row.className = "flex items-center justify-between bg-slate-900/50 p-2 rounded-lg border border-slate-700 hover:border-indigo-500/30 transition-colors";
+
+                // Create object URL for thumbnail
+                const url = URL.createObjectURL(file);
+
+                row.innerHTML = `
+                    <div class="flex items-center gap-3 overflow-hidden">
+                        <span class="text-xs font-mono text-slate-500 w-4 text-center">${idx + 1}</span>
+                        <img src="${url}" class="w-10 h-10 object-cover rounded border border-slate-700">
+                        <div class="truncate text-xs text-slate-300 max-w-[120px]">${file.name}</div>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <button onclick="moveImage(${idx}, -1)" class="p-2 rounded hover:bg-slate-700 text-slate-400 hover:text-indigo-300 disabled:opacity-30" ${idx === 0 ? 'disabled' : ''}>
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>
+                        </button>
+                        <button onclick="moveImage(${idx}, 1)" class="p-2 rounded hover:bg-slate-700 text-slate-400 hover:text-indigo-300 disabled:opacity-30" ${idx === orderedFiles.length - 1 ? 'disabled' : ''}>
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+                        </button>
+                    </div>
+                `;
+                list.appendChild(row);
+            });
+        }
+
+        function moveImage(idx, dir) {
+            const newIdx = idx + dir;
+            if (newIdx < 0 || newIdx >= orderedFiles.length) return;
+
+            // Swap
+            const temp = orderedFiles[idx];
+            orderedFiles[idx] = orderedFiles[newIdx];
+            orderedFiles[newIdx] = temp;
+
+            renderReorderUI();
+        }
+
+        async function mergeAllImages() {
+            // Use orderedFiles if available, else fallback
+            const filesToMerge = (orderedFiles.length > 0) ? orderedFiles : currentUniqueFiles;
+
+            if (filesToMerge.length < 2) return;
+
+            showToast("Merging images...");
+
+            // 1. Calculate Counts for the subset
+            let traitCounts = {};
+            const fileToIndex = new Map();
+            currentUniqueFiles.forEach((f, i) => fileToIndex.set(f, i));
+
+            filesToMerge.forEach(file => {
+                const idx = fileToIndex.get(file);
+                if (idx !== undefined && imageData[idx]) {
+                    for (let t in imageData[idx]) {
+                        if (imageData[idx][t]) {
+                            traitCounts[t] = (traitCounts[t] || 0) + 1;
+                        }
+                    }
+                }
+            });
+
+            let h3 = 0, h2 = 0;
+            for (let t in traitCounts) {
+                if (traitCounts[t] >= 3) h3++;
+                else if (traitCounts[t] === 2) h2++;
+            }
+
+            // 2. Load all images
+            const loadedImages = [];
+            let totalHeight = 0;
+            let maxWidth = 0;
+
+            for (const file of filesToMerge) {
+                const img = await htmlImgFromBase64(URL.createObjectURL(file));
+                loadedImages.push(img);
+                totalHeight += img.height;
+                if (img.width > maxWidth) maxWidth = img.width;
+            }
+
+            // 3. Create canvas with Header
+            const HEADER_HEIGHT = 100; // Height for the count display
+            const canvas = document.createElement('canvas');
+            canvas.width = maxWidth;
+            canvas.height = totalHeight + HEADER_HEIGHT;
+            const ctx = canvas.getContext('2d');
+
+            // Draw Header
+            ctx.fillStyle = "#000000";
+            ctx.fillRect(0, 0, canvas.width, HEADER_HEIGHT);
+
+            ctx.font = "bold 50px 'M PLUS Rounded 1c', sans-serif";
+            ctx.fillStyle = "#ffffff";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+
+            // Draw Text
+            const text = `共通秘伝Ⅲ: ${h3}   共通秘伝Ⅱ: ${h2}`;
+            // Optional: Colorful text
+            const centerX = canvas.width / 2;
+            const centerY = HEADER_HEIGHT / 2;
+
+            // Simple Shadow
+            ctx.shadowColor = "rgba(0,0,0,0.5)";
+            ctx.shadowBlur = 4;
+            ctx.fillText(text, centerX, centerY);
+            ctx.shadowBlur = 0;
+
+            // Draw images stacked
+            let yOffset = HEADER_HEIGHT;
+            for (const img of loadedImages) {
+                ctx.drawImage(img, 0, yOffset);
+                yOffset += img.height;
+            }
+
+            const dataUrl = canvas.toDataURL('image/png');
+            showMergeModal(dataUrl);
+        }
+
+        function showMergeModal(src) {
+            const modal = document.createElement('div');
+            modal.className = "fixed inset-0 z-[300] bg-black/90 flex flex-col items-center justify-center p-4 backdrop-blur-sm";
+            modal.innerHTML = `
+                <div class="relative w-full max-w-lg h-full flex flex-col">
+                    <div class="flex justify-between items-center mb-4 text-white">
+                        <h3 class="font-bold text-lg">Merged Image</h3>
+                        <button class="bg-indigo-600 px-4 py-1 rounded-full text-sm font-bold" onclick="this.closest('.fixed').remove()">CLOSE</button>
+                    </div>
+                    <div class="text-center text-slate-400 text-xs mb-2">Long-press or Right-click to Save</div>
+                    <div class="flex-1 overflow-auto rounded-xl border border-slate-700 bg-slate-900/50 flex items-start justify-center p-2">
+                        <img src="${src}" class="max-w-full rounded shadow-2xl">
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        function switchTab(tab) {
+            document.getElementById('view-main').classList.toggle('hidden', tab !== 'main');
+            document.getElementById('view-settings').classList.toggle('hidden', tab !== 'settings');
+
+            const tabMain = document.getElementById('tab-main');
+            const tabSettings = document.getElementById('tab-settings');
+
+            if (tab === 'main') {
+                tabMain.classList.add('tab-active', 'text-indigo-400');
+                tabMain.classList.remove('text-slate-500');
+                tabSettings.classList.remove('tab-active', 'text-indigo-400');
+                tabSettings.classList.add('text-slate-500');
+                // Show result bar if we have data
+                if (imageData.length > 0) {
+                    document.getElementById('resultsBar').classList.remove('hidden');
+                    setTimeout(() => document.getElementById('resultsBar').classList.add('show'), 100);
+                }
+            } else {
+                tabSettings.classList.add('tab-active', 'text-indigo-400');
+                tabSettings.classList.remove('text-slate-500');
+                tabMain.classList.remove('tab-active', 'text-indigo-400');
+                tabMain.classList.add('text-slate-500');
+                document.getElementById('resultsBar').classList.remove('show');
+                setTimeout(() => document.getElementById('resultsBar').classList.add('hidden'), 300);
+            }
+        }
+
+        function createCard(idx, src, traitNames, fileName) {
+            const card = document.createElement('div');
+            card.className = "glass rounded-3xl p-5 overflow-hidden shadow-2xl transition-all hover:border-indigo-500/30";
+
+            // Filter tags for display optimization
+            const sortedNames = traitNames.sort((a, b) => {
+                // Put active ones first
+                const aActive = imageData[idx][a] ? 1 : 0;
+                const bActive = imageData[idx][b] ? 1 : 0;
+                return bActive - aActive;
+            });
+
+            card.innerHTML = `
+                <div class="relative mb-6 group">
+                   <img src="${src}" class="w-full rounded-2xl shadow-lg transition-transform duration-500 group-hover:scale-[1.02]">
+                   <div class="absolute bottom-2 right-2 bg-black/60 px-2 py-1 rounded text-[10px] text-white/80 font-mono">${fileName}</div>
+                </div>
+                <div class="grid grid-cols-2 gap-2" id="tags-${idx}"></div>
+            `;
+            document.getElementById('mainContainer').appendChild(card);
+
+            const tagContainer = document.getElementById(`tags-${idx}`);
+
+            sortedNames.forEach(name => {
+                const btn = document.createElement('button');
+                const isActive = imageData[idx][name];
+                btn.innerText = name;
+                btn.className = `btn-tag ${isActive ? 'tag-on' : 'text-slate-400 hover:bg-slate-800'}`;
+                btn.onclick = () => {
+                    imageData[idx][name] = !imageData[idx][name];
+
+                    if (imageData[idx][name]) {
+                        btn.className = 'btn-tag tag-on';
+                    } else {
+                        btn.className = 'btn-tag text-slate-400 hover:bg-slate-800';
+                    }
+                    updateCount();
+                };
+                tagContainer.appendChild(btn);
+            });
+        }
+
+        function updateCount() {
+            let total = {};
+            imageData.forEach(sel => {
+                for (let n in sel) {
+                    if (sel[n]) total[n] = (total[n] || 0) + 1;
+                }
+            });
+            let h3 = 0, h2 = 0;
+            for (let n in total) {
+                if (total[n] >= 3) h3++;
+                else if (total[n] === 2) h2++;
+            }
+
+            // Animation for numbers
+            animateValue("h3-count", parseInt(document.getElementById('h3-count').innerText), h3, 500);
+            animateValue("h2-count", parseInt(document.getElementById('h2-count').innerText), h2, 500);
+        }
+
+        function animateValue(id, start, end, duration) {
+            if (start === end) return;
+            const range = end - start;
+            let current = start;
+            const increment = end > start ? 1 : -1;
+            const stepTime = Math.abs(Math.floor(duration / range));
+            const obj = document.getElementById(id);
+
+            const timer = setInterval(function () {
+                current += increment;
+                obj.innerHTML = current;
+                if (current == end) {
+                    clearInterval(timer);
+                }
+            }, Math.max(stepTime, 20)); // Min 20ms per frame
+        }
+
+        // Cropping & Registration Logic
+        const traitImageInput = document.getElementById('traitImageInput');
+        traitImageInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                openCropper(file);
+            }
+            traitImageInput.value = ''; // Reset
+        });
+
+        function openCropper(file) {
+            const modal = document.getElementById('cropModal');
+            const image = document.getElementById('cropTarget');
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                image.src = e.target.result;
+                modal.classList.add('open');
+
+                if (cropper) cropper.destroy();
+                cropper = new Cropper(image, {
+                    viewMode: 1,
+                    dragMode: 'move',
+                    autoCropArea: 0.5,
+                    restore: false,
+                    guides: true,
+                    center: true,
+                    highlight: false,
+                    cropBoxMovable: true,
+                    cropBoxResizable: true,
+                    toggleDragModeOnDblclick: false,
+                });
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function closeCropper() {
+            document.getElementById('cropModal').classList.remove('open');
+            if (cropper) {
+                cropper.destroy();
+                cropper = null;
+            }
+        }
+
+        function openHelp() {
+            document.getElementById('helpModal').classList.add('open');
+        }
+
+        function closeHelp() {
+            document.getElementById('helpModal').classList.remove('open');
+        }
+
+        function saveCrop() {
+            if (!cropper) return;
+            const name = document.getElementById('newTraitName').value.trim();
+            if (!name) {
+                alert("Please enter a trait name first.");
+                return;
+            }
+
+            const canvas = cropper.getCroppedCanvas();
+            const base64 = canvas.toDataURL('image/png');
+
+            const defaultThreshold = name.includes("六英雄杯") ? 0.85 : 0.7;
+            db.transaction([STORE_NAME], 'readwrite').objectStore(STORE_NAME).put({ name: name, image: base64, isPreset: false, threshold: defaultThreshold });
+
+            closeCropper();
+            renderTraitList();
+            showToast(`Trait "${name}" registered!`);
+            document.getElementById('newTraitName').value = '';
+        }
+
+        function renderTraitList() {
+            const list = document.getElementById('traitList');
+            const countSpan = document.getElementById('traitCount');
+            list.innerHTML = "";
+
+            db.transaction([STORE_NAME], 'readonly').objectStore(STORE_NAME).getAll().onsuccess = (e) => {
+                const traits = e.target.result;
+                countSpan.innerText = `${traits.length} ITEMS`;
+
+                for (let i = 0; i < traits.length; i++) {
+                    const t = traits[i];
+                    const item = document.createElement('div');
+                    item.className = "flex flex-col gap-2 glass p-3 rounded-xl border border-slate-800 hover:border-indigo-500/30 transition-all group";
+                    const thresh = t.threshold || 0.7;
+                    item.innerHTML = `
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <img src="${t.image}" class="w-10 h-10 object-contain bg-slate-950 rounded border border-slate-700">
+                                <div>
+                                    <div class="text-sm font-bold text-slate-200">${t.name}</div>
+                                    <div class="text-[10px] text-slate-500 font-mono">${t.isPreset ? 'PRESET' : 'CUSTOM'}</div>
+                                </div>
+                            </div>
+                            ${!t.isPreset ? `
+                            <button onclick="deleteTrait('${t.name}')" class="p-2 text-slate-600 hover:text-red-400 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                </svg>
+                            </button>` : ''}
+                        </div>
+                        <div class="flex items-center gap-2 mt-2 pt-2 border-t border-slate-700/50">
+                            <span class="text-[10px] uppercase font-bold text-slate-500">Match Rate:</span>
+                            <input type="number" step="0.01" min="0.1" max="1.0" value="${thresh}" 
+                                class="bg-slate-900 rounded px-2 py-1 text-xs text-indigo-300 w-16 border border-slate-700 focus:border-indigo-500 outline-none"
+                                onchange="updateTraitThreshold('${t.name}', this.value)">
+                        </div>
+                    `;
+                    list.appendChild(item);
+                }
+            };
+        }
+
+        function updateTraitThreshold(name, val) {
+            const threshold = parseFloat(val);
+            if (isNaN(threshold) || threshold < 0.1 || threshold > 1.0) {
+                showToast("Invalid threshold (0.1 - 1.0)");
+                return;
+            }
+            const transaction = db.transaction([STORE_NAME], 'readwrite');
+            const store = transaction.objectStore(STORE_NAME);
+            store.get(name).onsuccess = (e) => {
+                const data = e.target.result;
+                if (data) {
+                    data.threshold = threshold;
+                    store.put(data);
+                    showToast(`Updated ${name}: ${threshold}`);
+                }
+            };
+        }
+
+        function deleteTrait(name) {
+            if (confirm(`Delete custom trait "${name}"?`)) {
+                db.transaction([STORE_NAME], 'readwrite').objectStore(STORE_NAME).delete(name);
+                setTimeout(renderTraitList, 100);
+            }
+        }
+    </script>
+</body>
+
+</html>
