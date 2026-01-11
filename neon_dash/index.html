@@ -139,6 +139,90 @@
             font-style: italic;
         }
 
+        /* BGM Toggle Button */
+        #bgm-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 200;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--neon-blue);
+            color: var(--neon-blue);
+            padding: 10px;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: 0.2s;
+        }
+
+        #bgm-toggle:hover {
+            background: var(--neon-blue);
+            color: black;
+            box-shadow: 0 0 10px var(--neon-blue);
+        }
+
+        #bgm-toggle.muted {
+            border-color: #555;
+            color: #555;
+        }
+
+        /* Ranking Modal/List Improvements */
+        #leaderboard {
+            width: 100%;
+            max-width: 350px;
+            margin: 20px 0;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 15px;
+            font-size: 0.85rem;
+            max-height: 250px;
+            /* Scrollable area */
+            overflow-y: auto;
+            border: 1px solid rgba(0, 242, 255, 0.2);
+        }
+
+        /* Custom Scrollbar for Ranking */
+        #leaderboard::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #leaderboard::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        #leaderboard::-webkit-scrollbar-thumb {
+            background: var(--neon-blue);
+            border-radius: 4px;
+        }
+
+        .leaderboard-entry {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .leaderboard-entry:last-child {
+            border-bottom: none;
+        }
+
+        .btn-secondary {
+            border-color: var(--neon-gold);
+            font-size: 1rem;
+            padding: 10px 30px;
+            margin-top: 10px;
+        }
+
+        .btn-secondary:hover {
+            background: var(--neon-gold);
+            box-shadow: 0 0 20px var(--neon-gold);
+        }
+
         input[type="text"] {
             background: rgba(255, 255, 255, 0.1);
             border: 2px solid var(--neon-blue);
@@ -265,7 +349,10 @@
             </div>
 
             <button id="main-button" class="btn">START GAME</button>
+            <button id="ranking-button" class="btn btn-secondary">RANKING (TOP 30)</button>
         </div>
+
+        <div id="bgm-toggle">🔊</div>
     </div>
 
     <script type="module">
@@ -320,6 +407,8 @@
                 this.volume = 0.1;
                 this.playbackRate = 1.0;
                 this.currentNote = 0;
+                this.isMuted = localStorage.getItem('neon_dash_bgm_muted') === 'true';
+
                 // Simple Cyberpunk Bassline
                 this.melody = [
                     { f: 110, d: 0.25 }, { f: 0, d: 0.25 }, { f: 110, d: 0.25 }, { f: 0, d: 0.25 },
@@ -330,7 +419,7 @@
             }
 
             async play() {
-                if (this.isPlaying) return;
+                if (this.isPlaying || this.isMuted) return;
                 // AudioContext must be resumed inside a user gesture (which start() is)
                 if (audioCtx.state === 'suspended') await audioCtx.resume();
                 this.isPlaying = true;
@@ -347,7 +436,7 @@
             }
 
             loop() {
-                if (!this.isPlaying) return;
+                if (!this.isPlaying || this.isMuted) return;
 
                 const note = this.melody[this.currentNote];
                 let duration = note.d / this.playbackRate;
@@ -361,6 +450,8 @@
             }
 
             tone(freq, dur) {
+                if (this.isMuted) return; // Mute check
+
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
 
@@ -383,6 +474,62 @@
                 osc.start(now);
                 osc.stop(now + dur + 0.1);
             }
+
+            toggleMute() {
+                this.isMuted = !this.isMuted;
+                localStorage.setItem('neon_dash_bgm_muted', this.isMuted);
+                if (this.isMuted) {
+                    this.stop();
+                    return true;
+                } else {
+                    if (gameState === 'PLAYING') this.play();
+                    return false;
+                }
+            }
+
+            // Sound Effects - Play even if BGM is muted (unless requested otherwise, but typically SE acts independently)
+            playSE(type) {
+                if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => { });
+
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                const now = audioCtx.currentTime;
+
+                if (type === 'gold') {
+                    // Coin/gem sound: High sine ping
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(1200, now);
+                    osc.frequency.exponentialRampToValueAtTime(1800, now + 0.1);
+
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.3);
+                } else if (type === 'slow') {
+                    // Powerup: Sweep
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(220, now);
+                    osc.frequency.linearRampToValueAtTime(880, now + 0.3);
+
+                    // Filter sweep
+                    const filter = audioCtx.createBiquadFilter();
+                    filter.type = 'lowpass';
+                    filter.frequency.setValueAtTime(500, now);
+                    filter.frequency.linearRampToValueAtTime(3000, now + 0.3);
+
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+
+                    osc.connect(filter);
+                    filter.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.3);
+                }
+            }
         }
 
         const bgm = new BGMSystem();
@@ -401,6 +548,8 @@
         const playerNameInput = document.getElementById('player-name');
         const leaderboardDiv = document.getElementById('leaderboard');
         const screenTitle = document.getElementById('screen-title');
+        const bgmToggle = document.getElementById('bgm-toggle');
+        const rankingButton = document.getElementById('ranking-button');
 
         let gameState = 'START_MENU';
         let score = 0, combo = 0, level = 1, speed = 6, distance = 0, slowTime = 0;
@@ -495,15 +644,27 @@
             } catch (e) { console.error("Score save error:", e); }
         };
 
-        const loadRanking = async () => {
+        try {
+            const col = collection(db, 'artifacts', appId, 'public', 'data', 'scores');
+            await addDoc(col, { name: name, uid: user.uid, score: Math.floor(score), date: Date.now() });
+            loadRanking(); // Reload ranking after save
+        } catch (e) { console.error("Score save error:", e); }
+        };
+
+        const loadRanking = async (limitCount = 30) => {
             const list = document.getElementById('leaderboard-list');
+            list.innerText = "Loading...";
             try {
                 const col = collection(db, 'artifacts', appId, 'public', 'data', 'scores');
-                const snap = await getDocs(col);
+                const p = query(col, orderBy("score", "desc"), limit(limitCount));
+                const snap = await getDocs(p);
                 let results = [];
                 snap.forEach(d => results.push(d.data()));
-                results.sort((a, b) => b.score - a.score);
-                list.innerHTML = results.slice(0, 5).map((r, i) => `
+
+                // Client-side deduping if needed or simple display
+                // results.sort((a, b) => b.score - a.score); // Already ordered by query
+
+                list.innerHTML = results.map((r, i) => `
                 <div class="leaderboard-entry ${r.uid === user?.uid ? 'is-me' : ''}">
                     <span>${i + 1}. ${r.name}</span>
                     <span>${r.score}</span>
@@ -511,6 +672,7 @@
             `).join('') || "No scores yet";
             } catch (e) {
                 list.innerText = "Ranking error";
+                console.error(e);
             }
         };
 
@@ -566,8 +728,16 @@
                 it.update(curSpeed);
                 if (Math.hypot(player.x - it.x, player.y - it.y) < 40) {
                     items.splice(i, 1);
-                    if (it.type === 'gold') { score += 500; showMsg("+500!"); }
-                    else { slowTime = SLOW_DURATION; showMsg("SLOW!"); }
+                    if (it.type === 'gold') {
+                        score += 500;
+                        showMsg("+500!");
+                        bgm.playSE('gold'); // Play SE
+                    }
+                    else {
+                        slowTime = SLOW_DURATION;
+                        showMsg("SLOW!");
+                        bgm.playSE('slow'); // Play SE
+                    }
                     scoreElement.innerText = score;
                 }
                 if (it.y > canvas.height) items.splice(i, 1);
@@ -618,6 +788,7 @@
             playerNameInput.classList.add('hidden');
             leaderboardDiv.classList.remove('hidden');
             mainButton.innerText = "RETRY";
+            rankingButton.classList.add('hidden'); // Hide simple ranking button on game over
             overlayScreen.classList.remove('hidden');
             saveScore();
         };
@@ -656,6 +827,24 @@
         mainButton.addEventListener('click', () => {
             if (gameState === 'START_MENU' || gameState === 'GAMEOVER') start();
         });
+
+        rankingButton.addEventListener('click', () => {
+            leaderboardDiv.classList.remove('hidden');
+            rankingButton.classList.add('hidden');
+            loadRanking(30);
+        });
+
+        bgmToggle.addEventListener('click', () => {
+            const muted = bgm.toggleMute();
+            bgmToggle.innerText = muted ? "🔇" : "🔊";
+            bgmToggle.classList.toggle('muted', muted);
+        });
+
+        // Initialize BGM toggle state
+        if (bgm.isMuted) {
+            bgmToggle.innerText = "🔇";
+            bgmToggle.classList.add('muted');
+        }
 
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
