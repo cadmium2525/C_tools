@@ -329,10 +329,10 @@
                 ];
             }
 
-            play() {
+            async play() {
                 if (this.isPlaying) return;
                 // AudioContext must be resumed inside a user gesture (which start() is)
-                if (audioCtx.state === 'suspended') audioCtx.resume();
+                if (audioCtx.state === 'suspended') await audioCtx.resume();
                 this.isPlaying = true;
                 this.loop();
             }
@@ -645,7 +645,7 @@
 
         // Use canvas listeners for better iframe/mobile support
         canvas.addEventListener('touchstart', handleInput, { passive: false });
-        canvas.addEventListener('touchmove', handleInput, { passive: false });
+        // Touchmove removed to prevent erratic sliding controls
         canvas.addEventListener('mousedown', handleInput);
 
         // Backup for missed touches
