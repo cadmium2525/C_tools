@@ -644,12 +644,7 @@
             } catch (e) { console.error("Score save error:", e); }
         };
 
-        try {
-            const col = collection(db, 'artifacts', appId, 'public', 'data', 'scores');
-            await addDoc(col, { name: name, uid: user.uid, score: Math.floor(score), date: Date.now() });
-            loadRanking(); // Reload ranking after save
-        } catch (e) { console.error("Score save error:", e); }
-        };
+
 
         const loadRanking = async (limitCount = 30) => {
             const list = document.getElementById('leaderboard-list');
