@@ -11,6 +11,9 @@
             --neon-pink: #ff00de;
             --neon-gold: #ffcc00;
             --neon-slow: #00ff88;
+            --neon-zigzag: #ffff00;
+            --neon-scale: #88ff00;
+            --neon-blink: #ffffff;
             --bg-color: #0a0a0c;
         }
 
@@ -349,6 +352,7 @@
             </div>
 
             <button id="main-button" class="btn">START GAME</button>
+            <button id="home-button" class="btn btn-secondary hidden">HOME</button>
             <button id="ranking-button" class="btn btn-secondary">RANKING (TOP 30)</button>
         </div>
 
@@ -554,9 +558,15 @@
         let gameState = 'START_MENU';
         let score = 0, combo = 0, level = 1, speed = 6, distance = 0, slowTime = 0;
         let player, obstacles = [], items = [], particles = [];
+        const BEHAVIOR_TYPES = ['static', 'horizontal', 'zigzag', 'scale', 'blink'];
 
         const PLAYER_SIZE = 35;
         const SLOW_DURATION = 300;
+
+        // Initialize Images
+        const imgPlayer = new Image(); imgPlayer.src = 'img/player.png';
+        const imgItemYellow = new Image(); imgItemYellow.src = 'img/yellow.png';
+        const imgItemGreen = new Image(); imgItemGreen.src = 'img/green.png';
 
         class Player {
             constructor() {
@@ -566,12 +576,17 @@
             }
             update() { this.x += (this.targetX - this.x) * 0.25; }
             draw() {
-                ctx.fillStyle = "#00f2ff";
-                ctx.shadowBlur = 15; ctx.shadowColor = "#00f2ff";
-                ctx.fillRect(this.x - PLAYER_SIZE / 2, this.y - PLAYER_SIZE / 2, PLAYER_SIZE, PLAYER_SIZE);
-                ctx.fillStyle = "white";
-                ctx.fillRect(this.x - PLAYER_SIZE / 4, this.y - PLAYER_SIZE / 4, PLAYER_SIZE / 2, PLAYER_SIZE / 2);
-                ctx.shadowBlur = 0;
+                // Use image instead of rect
+                if (imgPlayer.complete) {
+                    ctx.shadowBlur = 15; ctx.shadowColor = "#00f2ff";
+                    // Draw centered
+                    ctx.drawImage(imgPlayer, this.x - PLAYER_SIZE / 2, this.y - PLAYER_SIZE / 2, PLAYER_SIZE, PLAYER_SIZE);
+                    ctx.shadowBlur = 0;
+                } else {
+                    // Fallback if image not loaded yet
+                    ctx.fillStyle = "#00f2ff";
+                    ctx.fillRect(this.x - PLAYER_SIZE / 2, this.y - PLAYER_SIZE / 2, PLAYER_SIZE, PLAYER_SIZE);
+                }
             }
             move(dir) {
                 const lane = canvas.width / 3.5;
@@ -587,11 +602,53 @@
                 this.x = Math.random() * (canvas.width - this.w);
                 this.y = -100;
                 this.passed = false;
+                this.baseX = this.x;
+                this.time = 0;
+
+                // レベルに応じて挙動の種類を増やす
+                // level 1: static, level 2: static+horizontal, ... level 5: all
+                const maxBehaviorIndex = Math.min(level, BEHAVIOR_TYPES.length) - 1;
+                this.type = BEHAVIOR_TYPES[Math.floor(Math.random() * (maxBehaviorIndex + 1))];
+
+                // 挙動に応じた初期設定
+                this.seed = Math.random() * Math.PI * 2;
+                this.blinkTimer = 0;
+                this.visible = true;
             }
-            update(s) { this.y += s; }
+            update(s) {
+                this.y += s;
+                this.time++;
+
+                if (this.type === 'horizontal') {
+                    this.x = this.baseX + Math.sin(this.time * 0.05 + this.seed) * (canvas.width * 0.2);
+                    // 画面端の手当
+                    if (this.x < 0) this.x = 0;
+                    if (this.x + this.w > canvas.width) this.x = canvas.width - this.w;
+                } else if (this.type === 'zigzag') {
+                    this.x = this.baseX + Math.sin(this.time * 0.1 + this.seed) * (canvas.width * 0.1);
+                    if (this.x < 0) this.x = 0;
+                    if (this.x + this.w > canvas.width) this.x = canvas.width - this.w;
+                } else if (this.type === 'scale') {
+                    const scale = 1 + Math.sin(this.time * 0.08 + this.seed) * 0.3;
+                    const center = this.x + this.w / 2;
+                    this.w = (canvas.width * 0.3) * scale;
+                    this.x = center - this.w / 2;
+                } else if (this.type === 'blink') {
+                    this.blinkTimer++;
+                    if (this.blinkTimer % 20 === 0) this.visible = !this.visible;
+                }
+            }
             draw() {
-                ctx.fillStyle = "#ff00de";
-                ctx.shadowBlur = 10; ctx.shadowColor = "#ff00de";
+                if (!this.visible) return;
+
+                let color = "#ff00de"; // static (pink)
+                if (this.type === 'horizontal') color = "#00f2ff"; // cyan
+                else if (this.type === 'zigzag') color = "#ffff00"; // yellow
+                else if (this.type === 'scale') color = "#88ff00"; // green-yellow
+                else if (this.type === 'blink') color = "#ffffff"; // white
+
+                ctx.fillStyle = color;
+                ctx.shadowBlur = 10; ctx.shadowColor = color;
                 ctx.fillRect(this.x, this.y, this.w, this.h);
                 ctx.shadowBlur = 0;
             }
@@ -600,17 +657,25 @@
         class Item {
             constructor(type) {
                 this.type = type;
-                this.size = 24;
+                this.size = 30; // Slightly larger for images
                 this.x = Math.random() * (canvas.width - this.size);
                 this.y = -100;
             }
             update(s) { this.y += s * 1.2; }
             draw() {
+                const img = this.type === 'gold' ? imgItemYellow : imgItemGreen;
                 const glow = this.type === 'gold' ? "#ffcc00" : "#00ff88";
-                ctx.fillStyle = glow;
-                ctx.shadowBlur = 15; ctx.shadowColor = glow;
-                ctx.fillRect(this.x, this.y, this.size, this.size);
-                ctx.shadowBlur = 0;
+
+                if (img.complete) {
+                    ctx.shadowBlur = 15; ctx.shadowColor = glow;
+                    ctx.drawImage(img, this.x, this.y, this.size, this.size);
+                    ctx.shadowBlur = 0;
+                } else {
+                    ctx.fillStyle = glow;
+                    ctx.shadowBlur = 15; ctx.shadowColor = glow;
+                    ctx.fillRect(this.x, this.y, this.size, this.size);
+                    ctx.shadowBlur = 0;
+                }
             }
         }
 
@@ -694,9 +759,13 @@
 
             const targetLevel = Math.floor(score / 200) + 1;
             if (targetLevel > level) {
-                level = targetLevel; speed += 0.8;
+                level = targetLevel;
+                // 全てのモードが解放された（レベル > 挙動数）後、スピードアップを開始
+                if (level > BEHAVIOR_TYPES.length) {
+                    speed += 0.8;
+                }
                 levelElement.innerText = `LEVEL ${level}`;
-                showMsg("SPEED UP!");
+                showMsg("LEVEL UP!"); // SPEED UPからLEVEL UPに変更
             }
 
             if (distance % Math.max(10, 45 - level) === 0) obstacles.push(new Obstacle());
@@ -758,7 +827,15 @@
             requestAnimationFrame(gameLoop);
         }
 
+        const resizeCanvas = () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        };
+
         const start = () => {
+            // Force resize to fix visibility bug on some devices/iframes
+            resizeCanvas();
+
             // BGM再生開始
             bgm.play().catch(e => console.log("Audio play prevented"));
 
@@ -783,6 +860,7 @@
             playerNameInput.classList.add('hidden');
             leaderboardDiv.classList.remove('hidden');
             mainButton.innerText = "RETRY";
+            document.getElementById('home-button').classList.remove('hidden'); // HOMEボタン表示
             rankingButton.classList.add('hidden'); // Hide simple ranking button on game over
             overlayScreen.classList.remove('hidden');
             saveScore();
@@ -807,7 +885,7 @@
             else player.move('right');
         };
 
-        window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; });
+        window.addEventListener('resize', resizeCanvas);
 
         // Use canvas listeners for better iframe/mobile support
         canvas.addEventListener('touchstart', handleInput, { passive: false });
@@ -821,6 +899,19 @@
 
         mainButton.addEventListener('click', () => {
             if (gameState === 'START_MENU' || gameState === 'GAMEOVER') start();
+        });
+
+        document.getElementById('home-button').addEventListener('click', () => {
+            gameState = 'START_MENU';
+            screenTitle.innerText = "NEON DASH";
+            screenTitle.style.color = "white";
+            document.getElementById('screen-subtitle').innerText = "名前を入力してスタート";
+            playerNameInput.classList.remove('hidden');
+            leaderboardDiv.classList.add('hidden');
+            mainButton.innerText = "START GAME";
+            document.getElementById('home-button').classList.add('hidden');
+            rankingButton.classList.remove('hidden');
+            bgm.playbackRate = 1.0;
         });
 
         rankingButton.addEventListener('click', () => {
