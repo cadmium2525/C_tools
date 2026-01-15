@@ -556,7 +556,7 @@
         const rankingButton = document.getElementById('ranking-button');
 
         let gameState = 'START_MENU';
-        let score = 0, combo = 0, level = 1, speed = 6, distance = 0, slowTime = 0;
+        let score = 0, combo = 0, level = 1, speed = 5, distance = 0, slowTime = 0;
         let player, obstacles = [], items = [], particles = [];
         const BEHAVIOR_TYPES = ['static', 'horizontal', 'zigzag', 'scale', 'blink'];
 
@@ -597,7 +597,7 @@
 
         class Obstacle {
             constructor() {
-                this.w = canvas.width * (0.2 + Math.random() * 0.3);
+                this.w = canvas.width * (0.2 + Math.random() * 0.2);
                 this.h = 35;
                 this.x = Math.random() * (canvas.width - this.w);
                 this.y = -100;
@@ -757,18 +757,18 @@
             distance++;
             player.update();
 
-            const targetLevel = Math.floor(score / 200) + 1;
+            const targetLevel = Math.floor(score / 1000) + 1;
             if (targetLevel > level) {
                 level = targetLevel;
                 // 全てのモードが解放された（レベル > 挙動数）後、スピードアップを開始
                 if (level > BEHAVIOR_TYPES.length) {
-                    speed += 0.8;
+                    speed += 0.4;
                 }
                 levelElement.innerText = `LEVEL ${level}`;
                 showMsg("LEVEL UP!"); // SPEED UPからLEVEL UPに変更
             }
 
-            if (distance % Math.max(10, 45 - level) === 0) obstacles.push(new Obstacle());
+            if (distance % Math.max(15, 60 - level) === 0) obstacles.push(new Obstacle());
             if (distance % 400 === 0) items.push(new Item('gold'));
             if (distance % 700 === 0) items.push(new Item('slow'));
 
@@ -793,8 +793,8 @@
                 if (Math.hypot(player.x - it.x, player.y - it.y) < 40) {
                     items.splice(i, 1);
                     if (it.type === 'gold') {
-                        score += 500;
-                        showMsg("+500!");
+                        score += 300;
+                        showMsg("+300!");
                         bgm.playSE('gold'); // Play SE
                     }
                     else {
