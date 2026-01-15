@@ -258,6 +258,10 @@
             box-shadow: 0 0 20px var(--neon-blue);
         }
 
+        #main-button {
+            margin-bottom: 20px;
+        }
+
         #leaderboard {
             width: 100%;
             max-width: 300px;
@@ -768,7 +772,7 @@
                 showMsg("LEVEL UP!"); // SPEED UPからLEVEL UPに変更
             }
 
-            if (distance % Math.max(15, 60 - level) === 0) obstacles.push(new Obstacle());
+            if (distance % (Math.max(15, 60 - level) * (slowTime > 0 ? 2 : 1)) === 0) obstacles.push(new Obstacle());
             if (distance % 400 === 0) items.push(new Item('gold'));
             if (distance % 700 === 0) items.push(new Item('slow'));
 
@@ -793,8 +797,8 @@
                 if (Math.hypot(player.x - it.x, player.y - it.y) < 40) {
                     items.splice(i, 1);
                     if (it.type === 'gold') {
-                        score += 300;
-                        showMsg("+300!");
+                        score += 500;
+                        showMsg("+500!");
                         bgm.playSE('gold'); // Play SE
                     }
                     else {
