@@ -4,16 +4,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Monolith Avoid - Music Edition</title>
+    <title>NEON DASH - Music Edition</title>
     <style>
         :root {
             --neon-blue: #00f2ff;
             --neon-pink: #ff00de;
             --neon-gold: #ffcc00;
             --neon-slow: #00ff88;
-            --neon-zigzag: #ffff00;
-            --neon-scale: #88ff00;
-            --neon-blink: #ffffff;
             --bg-color: #0a0a0c;
         }
 
@@ -258,10 +255,6 @@
             box-shadow: 0 0 20px var(--neon-blue);
         }
 
-        #main-button {
-            margin-bottom: 20px;
-        }
-
         #leaderboard {
             width: 100%;
             max-width: 300px;
@@ -323,40 +316,6 @@
         .hidden {
             display: none !important;
         }
-
-        .switch-btn {
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid var(--neon-blue);
-            color: var(--neon-blue);
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
-            font-size: 1.5rem;
-            transition: 0.2s;
-            z-index: 150;
-            pointer-events: auto;
-        }
-
-        .switch-btn:hover {
-            background: var(--neon-blue);
-            color: black;
-            box-shadow: 0 0 15px var(--neon-blue);
-        }
-
-        #switch-left {
-            left: 10px;
-        }
-
-        #switch-right {
-            right: 10px;
-        }
     </style>
 </head>
 
@@ -379,7 +338,7 @@
         <div id="msg-overlay">READY...</div>
 
         <div id="overlay-screen">
-            <h1 id="screen-title">MONOLITH AVOID</h1>
+            <h1 id="screen-title">Monolith Avoid</h1>
             <p id="screen-subtitle" style="color:#aaa; font-size: 0.8rem; margin-bottom: 20px;">名前を入力してスタート</p>
 
             <input type="text" id="player-name" placeholder="YOUR NAME" maxlength="10">
@@ -390,11 +349,7 @@
             </div>
 
             <button id="main-button" class="btn">START GAME</button>
-            <button id="home-button" class="btn btn-secondary hidden">HOME</button>
             <button id="ranking-button" class="btn btn-secondary">RANKING (TOP 30)</button>
-
-            <div id="switch-left" class="switch-btn">←</div>
-            <div id="switch-right" class="switch-btn">→</div>
         </div>
 
         <div id="bgm-toggle">🔊</div>
@@ -423,7 +378,7 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'monolith-avoid-v1';
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'neon-dash-v3';
 
         let user = null;
         const authenticate = async () => {
@@ -595,20 +550,10 @@
         const screenTitle = document.getElementById('screen-title');
         const bgmToggle = document.getElementById('bgm-toggle');
         const rankingButton = document.getElementById('ranking-button');
-        const switchLeft = document.getElementById('switch-left');
-        const switchRight = document.getElementById('switch-right');
-
-        const goToTetris = () => {
-            window.location.href = '../tetris/index.html';
-        };
-
-        switchLeft.onclick = goToTetris;
-        switchRight.onclick = goToTetris;
 
         let gameState = 'START_MENU';
-        let score = 0, combo = 0, level = 1, speed = 5, distance = 0, slowTime = 0;
+        let score = 0, combo = 0, level = 1, speed = 6, distance = 0, slowTime = 0;
         let player, obstacles = [], items = [], particles = [];
-        const BEHAVIOR_TYPES = ['static', 'horizontal', 'zigzag', 'scale', 'blink'];
 
         const PLAYER_SIZE = 35;
         const SLOW_DURATION = 300;
@@ -628,10 +573,10 @@
             draw() {
                 // Use image instead of rect
                 if (imgPlayer.complete) {
-                    ctx.shadowBlur = 15; ctx.shadowColor = "#00f2ff";
-                    // Draw centered
-                    ctx.drawImage(imgPlayer, this.x - PLAYER_SIZE / 2, this.y - PLAYER_SIZE / 2, PLAYER_SIZE, PLAYER_SIZE);
-                    ctx.shadowBlur = 0;
+                     ctx.shadowBlur = 15; ctx.shadowColor = "#00f2ff";
+                     // Draw centered
+                     ctx.drawImage(imgPlayer, this.x - PLAYER_SIZE / 2, this.y - PLAYER_SIZE / 2, PLAYER_SIZE, PLAYER_SIZE);
+                     ctx.shadowBlur = 0;
                 } else {
                     // Fallback if image not loaded yet
                     ctx.fillStyle = "#00f2ff";
@@ -647,58 +592,16 @@
 
         class Obstacle {
             constructor() {
-                this.w = canvas.width * (0.2 + Math.random() * 0.2);
+                this.w = canvas.width * (0.2 + Math.random() * 0.3);
                 this.h = 35;
                 this.x = Math.random() * (canvas.width - this.w);
                 this.y = -100;
                 this.passed = false;
-                this.baseX = this.x;
-                this.time = 0;
-
-                // レベルに応じて挙動の種類を増やす
-                // level 1: static, level 2: static+horizontal, ... level 5: all
-                const maxBehaviorIndex = Math.min(level, BEHAVIOR_TYPES.length) - 1;
-                this.type = BEHAVIOR_TYPES[Math.floor(Math.random() * (maxBehaviorIndex + 1))];
-
-                // 挙動に応じた初期設定
-                this.seed = Math.random() * Math.PI * 2;
-                this.blinkTimer = 0;
-                this.visible = true;
             }
-            update(s) {
-                this.y += s;
-                this.time++;
-
-                if (this.type === 'horizontal') {
-                    this.x = this.baseX + Math.sin(this.time * 0.05 + this.seed) * (canvas.width * 0.2);
-                    // 画面端の手当
-                    if (this.x < 0) this.x = 0;
-                    if (this.x + this.w > canvas.width) this.x = canvas.width - this.w;
-                } else if (this.type === 'zigzag') {
-                    this.x = this.baseX + Math.sin(this.time * 0.1 + this.seed) * (canvas.width * 0.1);
-                    if (this.x < 0) this.x = 0;
-                    if (this.x + this.w > canvas.width) this.x = canvas.width - this.w;
-                } else if (this.type === 'scale') {
-                    const scale = 1 + Math.sin(this.time * 0.08 + this.seed) * 0.3;
-                    const center = this.x + this.w / 2;
-                    this.w = (canvas.width * 0.3) * scale;
-                    this.x = center - this.w / 2;
-                } else if (this.type === 'blink') {
-                    this.blinkTimer++;
-                    if (this.blinkTimer % 20 === 0) this.visible = !this.visible;
-                }
-            }
+            update(s) { this.y += s; }
             draw() {
-                if (!this.visible) return;
-
-                let color = "#ff00de"; // static (pink)
-                if (this.type === 'horizontal') color = "#00f2ff"; // cyan
-                else if (this.type === 'zigzag') color = "#ffff00"; // yellow
-                else if (this.type === 'scale') color = "#88ff00"; // green-yellow
-                else if (this.type === 'blink') color = "#ffffff"; // white
-
-                ctx.fillStyle = color;
-                ctx.shadowBlur = 10; ctx.shadowColor = color;
+                ctx.fillStyle = "#ff00de";
+                ctx.shadowBlur = 10; ctx.shadowColor = "#ff00de";
                 ctx.fillRect(this.x, this.y, this.w, this.h);
                 ctx.shadowBlur = 0;
             }
@@ -715,7 +618,7 @@
             draw() {
                 const img = this.type === 'gold' ? imgItemYellow : imgItemGreen;
                 const glow = this.type === 'gold' ? "#ffcc00" : "#00ff88";
-
+                
                 if (img.complete) {
                     ctx.shadowBlur = 15; ctx.shadowColor = glow;
                     ctx.drawImage(img, this.x, this.y, this.size, this.size);
@@ -807,18 +710,14 @@
             distance++;
             player.update();
 
-            const targetLevel = Math.floor(score / 1000) + 1;
+            const targetLevel = Math.floor(score / 200) + 1;
             if (targetLevel > level) {
-                level = targetLevel;
-                // 全てのモードが解放された（レベル > 挙動数）後、スピードアップを開始
-                if (level > BEHAVIOR_TYPES.length) {
-                    speed += 0.4;
-                }
+                level = targetLevel; speed += 0.8;
                 levelElement.innerText = `LEVEL ${level}`;
-                showMsg("LEVEL UP!"); // SPEED UPからLEVEL UPに変更
+                showMsg("SPEED UP!");
             }
 
-            if (distance % (Math.max(15, 60 - level) * (slowTime > 0 ? 2 : 1)) === 0) obstacles.push(new Obstacle());
+            if (distance % Math.max(10, 45 - level) === 0) obstacles.push(new Obstacle());
             if (distance % 400 === 0) items.push(new Item('gold'));
             if (distance % 700 === 0) items.push(new Item('slow'));
 
@@ -878,8 +777,8 @@
         }
 
         const resizeCanvas = () => {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+             canvas.width = window.innerWidth;
+             canvas.height = window.innerHeight;
         };
 
         const start = () => {
@@ -910,7 +809,6 @@
             playerNameInput.classList.add('hidden');
             leaderboardDiv.classList.remove('hidden');
             mainButton.innerText = "RETRY";
-            document.getElementById('home-button').classList.remove('hidden'); // HOMEボタン表示
             rankingButton.classList.add('hidden'); // Hide simple ranking button on game over
             overlayScreen.classList.remove('hidden');
             saveScore();
@@ -949,19 +847,6 @@
 
         mainButton.addEventListener('click', () => {
             if (gameState === 'START_MENU' || gameState === 'GAMEOVER') start();
-        });
-
-        document.getElementById('home-button').addEventListener('click', () => {
-            gameState = 'START_MENU';
-            screenTitle.innerText = "NEON DASH";
-            screenTitle.style.color = "white";
-            document.getElementById('screen-subtitle').innerText = "名前を入力してスタート";
-            playerNameInput.classList.remove('hidden');
-            leaderboardDiv.classList.add('hidden');
-            mainButton.innerText = "START GAME";
-            document.getElementById('home-button').classList.add('hidden');
-            rankingButton.classList.remove('hidden');
-            bgm.playbackRate = 1.0;
         });
 
         rankingButton.addEventListener('click', () => {
