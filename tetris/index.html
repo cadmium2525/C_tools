@@ -78,7 +78,7 @@
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 20px;
-            padding: 15px 10px 25px 10px;
+            padding: 15px 10px 40px 10px;
             background: #1e293b;
             border-top: 2px solid #334155;
             flex-shrink: 0;
@@ -154,13 +154,37 @@
         .btn-drop {
             background: var(--accent-green);
             grid-area: drop;
-            height: 50px;
+            height: 52px;
             font-size: 18px;
-            margin-top: 4px;
+            margin-top: 10px;
+            margin-bottom: 5px;
         }
 
         .item-active {
             animation: glow 0.8s infinite alternate;
+        }
+
+        #bgm-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--accent-blue);
+            color: var(--accent-blue);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            z-index: 200;
+            transition: 0.2s;
+        }
+
+        #bgm-toggle.muted {
+            border-color: #475569;
+            color: #475569;
         }
 
         @keyframes glow {
@@ -266,6 +290,81 @@
         .shake {
             animation: shake 0.3s;
         }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: #1e293b;
+            border: 2px solid var(--accent-blue);
+            border-radius: 16px;
+            max-width: 400px;
+            width: 100%;
+            padding: 24px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 24px;
+            color: #94a3b8;
+            cursor: pointer;
+        }
+
+        .help-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .help-item:last-child {
+            border-bottom: none;
+        }
+
+        .help-icon {
+            width: 40px;
+            height: 40px;
+            flex-shrink: 0;
+        }
+
+        .help-text h3 {
+            font-weight: 800;
+            color: var(--accent-blue);
+            font-size: 0.9rem;
+            margin: 0;
+        }
+
+        .help-text p {
+            font-size: 0.75rem;
+            color: #cbd5e1;
+            margin: 2px 0 0 0;
+            line-height: 1.4;
+        }
+
+        #best-score-container {
+            margin-top: 15px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
     </style>
 </head>
 
@@ -300,10 +399,97 @@
                     class="bg-indigo-500 hover:bg-indigo-400 text-white px-12 py-4 rounded-2xl font-black text-xl shadow-[0_6px_0_#4338ca] transition-all active:translate-y-1 active:shadow-none">
                     START
                 </button>
+                <div id="best-score-container" class="hidden">
+                    <div class="text-[10px] text-slate-400">BEST SCORE</div>
+                    <div id="best-score" class="text-xl font-bold text-amber-400">0</div>
+                </div>
+                <div id="help-btn"
+                    class="mt-8 text-slate-400 border border-slate-700 w-10 h-10 rounded-full flex items-center justify-center font-bold cursor-pointer hover:bg-slate-800 transition-colors">
+                    ?</div>
                 <div id="switch-left" class="switch-btn">←</div>
                 <div id="switch-right" class="switch-btn">→</div>
             </div>
         </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div id="help-modal" class="modal">
+        <div class="modal-content">
+            <span id="close-modal" class="modal-close">&times;</span>
+            <h2 class="text-xl font-black mb-6 text-center text-white italic">TETRO GUIDE</h2>
+
+            <div class="mb-4 text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-700 pb-1">
+                Special Minos</div>
+            <div class="help-item">
+                <img src="images/モノリス.png" class="help-icon">
+                <div class="help-text">
+                    <h3>MONOLITH</h3>
+                    <p>重厚なブロック。50%でMonolithとして設置される。</p>
+                </div>
+            </div>
+            <div class="help-item">
+                <img src="images/ゲル.png" class="help-icon">
+                <div class="help-text">
+                    <h3>GEL</h3>
+                    <p>設置後、隙間がある限り下へと溶け落ちていく。</p>
+                </div>
+            </div>
+            <div class="help-item">
+                <img src="images/ゴースト.png" class="help-icon">
+                <div class="help-text">
+                    <h3>GHOST</h3>
+                    <p>自身と、その直下のブロックを消し去って消滅する。</p>
+                </div>
+            </div>
+            <div class="help-item">
+                <img src="images/ゴーレム.png" class="help-icon">
+                <div class="help-text">
+                    <h3>GOLEM</h3>
+                    <p>着地時に地響きを起こし、真下の隙間を埋めるようにブロックを押し潰す。</p>
+                </div>
+            </div>
+            <div class="help-item">
+                <img src="images/はてな.png" class="help-icon">
+                <div class="help-text">
+                    <h3>MYSTERY</h3>
+                    <p>接地した瞬間、他の4つの能力のいずれかに変化する。</p>
+                </div>
+            </div>
+
+            <div
+                class="mt-8 mb-4 text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-700 pb-1">
+                Items (Cleared Line)</div>
+            <div class="help-item">
+                <div
+                    class="help-icon flex items-center justify-center bg-amber-500 rounded-lg font-black text-[10px] text-white">
+                    BOMB</div>
+                <div class="help-text">
+                    <h3>BOMB</h3>
+                    <p>設置場所を中心に周囲2マスのブロックを破壊する。</p>
+                </div>
+            </div>
+            <div class="help-item">
+                <div
+                    class="help-icon flex items-center justify-center bg-emerald-500 rounded-lg font-black text-[10px] text-white">
+                    SLOW</div>
+                <div class="help-text">
+                    <h3>SLOW</h3>
+                    <p>8秒間、ミノの落下速度が大幅に低下する。</p>
+                </div>
+            </div>
+            <div class="help-item">
+                <div
+                    class="help-icon flex items-center justify-center bg-indigo-500 rounded-lg font-black text-[10px] text-white">
+                    CLEAR</div>
+                <div class="help-text">
+                    <h3>CLEAR</h3>
+                    <p>フィールド上のすべてのブロックを一掃する。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="bgm-toggle">🔊</div>
     </div>
 
     <div class="controller">
@@ -334,6 +520,87 @@
         const holdCanvas = document.getElementById('hold-canvas');
         const holdCtx = holdCanvas.getContext('2d');
         const overlay = document.getElementById('overlay');
+
+        // --- Sound System (Synthesized) ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        class SoundSystem {
+            constructor() {
+                this.isPlayingBGM = false;
+                this.bgmTimer = null;
+                this.currentNote = 0;
+                this.isMuted = localStorage.getItem('tetris_bgm_muted') === 'true';
+                this.bassline = [
+                    { f: 55, d: 0.5 }, { f: 0, d: 0.5 }, { f: 65.4, d: 0.5 }, { f: 0, d: 0.5 },
+                    { f: 49, d: 0.5 }, { f: 0, d: 0.5 }, { f: 55, d: 0.5 }, { f: 0, d: 0.5 }
+                ];
+            }
+            async playBGM() {
+                if (this.isPlayingBGM || this.isMuted) return;
+                if (audioCtx.state === 'suspended') await audioCtx.resume();
+                this.isPlayingBGM = true;
+                this.loopBGM();
+            }
+            toggleMute() {
+                this.isMuted = !this.isMuted;
+                localStorage.setItem('tetris_bgm_muted', this.isMuted);
+                if (this.isMuted) {
+                    this.stopBGM();
+                } else if (!isGameOver) {
+                    this.playBGM();
+                }
+                return this.isMuted;
+            }
+            stopBGM() {
+                this.isPlayingBGM = false;
+                if (this.bgmTimer) clearTimeout(this.bgmTimer);
+            }
+            loopBGM() {
+                if (!this.isPlayingBGM || this.isMuted) return;
+                const note = this.bassline[this.currentNote];
+                if (note.f > 0) this.tone(note.f, note.d * 0.8, 'sawtooth', 0.05);
+                this.currentNote = (this.currentNote + 1) % this.bassline.length;
+                this.bgmTimer = setTimeout(() => this.loopBGM(), note.d * 1000);
+            }
+            tone(freq, dur, type = 'sine', vol = 0.1) {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + dur);
+                osc.start();
+                osc.stop(audioCtx.currentTime + dur + 0.1);
+            }
+            playLineClear() {
+                const now = audioCtx.currentTime;
+                [440, 554.37, 659.25, 880].forEach((f, i) => {
+                    this.tone(f, 0.4, 'sine', 0.1);
+                });
+            }
+            playEarthquake() {
+                if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => { });
+                const now = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                const filter = audioCtx.createBiquadFilter();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(80, now);
+                osc.frequency.exponentialRampToValueAtTime(30, now + 0.5);
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(200, now);
+                filter.frequency.exponentialRampToValueAtTime(40, now + 0.5);
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(audioCtx.destination);
+                gain.gain.setValueAtTime(0.4, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.5);
+                osc.start(now);
+                osc.stop(now + 0.6);
+            }
+        }
+        const sounds = new SoundSystem();
 
         const SHAPES = {
             'I': [[0, 0, 0, 0], [1, 1, 1, 1], [0, 0, 0, 0], [0, 0, 0, 0]],
@@ -510,9 +777,9 @@
         function generateSpecialType() {
             const r = Math.random();
             if (r < 0.5) return 'モノリス';
-            if (r < 0.625) return 'ゲル';
-            if (r < 0.75) return 'ゴースト';
-            if (r < 0.875) return 'ゴーレム';
+            if (r < 0.65) return 'ゲル';
+            if (r < 0.8) return 'ゴースト';
+            if (r < 0.95) return 'ゴーレム';
             return 'はてな';
         }
 
@@ -657,6 +924,7 @@
                         }
                         board[cell.y][cell.x] = 0;
                         boardSpecial[cell.y][cell.x] = null;
+                        sounds.playEarthquake();
                     }
                 });
 
@@ -686,6 +954,7 @@
             if (cleared > 0) {
                 lines += cleared;
                 score += [0, 100, 300, 500, 800][cleared];
+                sounds.playLineClear();
                 grantItem(); // アイテムはライン消去のたびに出るように
             }
         }
@@ -750,11 +1019,30 @@
         function updateStats() {
             document.getElementById('score').innerText = score;
             document.getElementById('lines').innerText = lines;
-            dropInterval = Math.max(100, 1000 - (Math.floor(lines / 5) * 100));
+            dropInterval = Math.max(100, 1000 - (Math.floor(lines / 3) * 100));
+        }
+
+        // Score History
+        function saveToStorage() {
+            const best = localStorage.getItem('tetris_best_score') || 0;
+            if (score > best) {
+                localStorage.setItem('tetris_best_score', score);
+            }
+        }
+
+        function showBestScore() {
+            const best = localStorage.getItem('tetris_best_score');
+            if (best) {
+                document.getElementById('best-score').innerText = best;
+                document.getElementById('best-score-container').classList.remove('hidden');
+            }
         }
 
         function gameOver() {
             isGameOver = true;
+            sounds.stopBGM();
+            saveToStorage();
+            showBestScore();
             if (softDropInterval) {
                 clearInterval(softDropInterval);
                 softDropInterval = null;
@@ -778,6 +1066,7 @@
             initBoard(); score = 0; lines = 0; dropInterval = 1000; inventory = null;
             isGameOver = false; player.nextType = null; player.nextSpecialType = null; heldPieceType = null; heldSpecialType = null; holdUsed = false;
             overlay.style.display = 'none';
+            sounds.playBGM();
             updateStats(); updateItemUI(); playerReset(); drawPreview(holdCtx, null, holdCanvas, null);
             resize(); lastTime = performance.now(); update();
         }
@@ -833,6 +1122,30 @@
         document.getElementById('switch-left').onclick = goToNeonDash;
         document.getElementById('switch-right').onclick = goToNeonDash;
 
+        // Modal Events
+        const helpModal = document.getElementById('help-modal');
+        document.getElementById('help-btn').onclick = () => helpModal.style.display = 'flex';
+        document.getElementById('close-modal').onclick = () => helpModal.style.display = 'none';
+        window.onclick = (e) => { if (e.target == helpModal) helpModal.style.display = 'none'; };
+
+        // BGM Toggle
+        const bgmBtn = document.getElementById('bgm-toggle');
+        const updateBGMUI = () => {
+            if (sounds.isMuted) {
+                bgmBtn.innerText = '🔇';
+                bgmBtn.classList.add('muted');
+            } else {
+                bgmBtn.innerText = '🔊';
+                bgmBtn.classList.remove('muted');
+            }
+        };
+        bgmBtn.onclick = () => {
+            sounds.toggleMute();
+            updateBGMUI();
+        };
+        updateBGMUI();
+
+        showBestScore();
         initBoard();
         draw();
     </script>

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NEON DASH - Music Edition</title>
+    <title>Monolith Avoid - Music Edition</title>
     <style>
         :root {
             --neon-blue: #00f2ff;
@@ -379,7 +379,7 @@
         <div id="msg-overlay">READY...</div>
 
         <div id="overlay-screen">
-            <h1 id="screen-title">NEON DASH</h1>
+            <h1 id="screen-title">MONOLITH AVOID</h1>
             <p id="screen-subtitle" style="color:#aaa; font-size: 0.8rem; margin-bottom: 20px;">名前を入力してスタート</p>
 
             <input type="text" id="player-name" placeholder="YOUR NAME" maxlength="10">
@@ -423,7 +423,7 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'neon-dash-v3';
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'monolith-avoid-v1';
 
         let user = null;
         const authenticate = async () => {
