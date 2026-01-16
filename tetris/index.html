@@ -671,7 +671,11 @@
         function sweep() {
             let cleared = 0;
             outer: for (let y = board.length - 1; y >= 0; --y) {
-                for (let x = 0; x < board[y].length; ++x) if (board[y][x] === 0) continue outer;
+                for (let x = 0; x < board[y].length; ++x) {
+                    if (board[y][x] === 0) continue outer;
+                    // ゲルが落下中の場合はそのラインを消さない
+                    if (boardSpecial[y][x] === 'ゲル' && board[y + 1] && board[y + 1][x] === 0) continue outer;
+                }
                 const row = board.splice(y, 1)[0].fill(0);
                 const rowS = boardSpecial.splice(y, 1)[0].fill(null);
                 board.unshift(row);
