@@ -323,6 +323,40 @@
         .hidden {
             display: none !important;
         }
+
+        .switch-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--neon-blue);
+            color: var(--neon-blue);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            font-size: 1.5rem;
+            transition: 0.2s;
+            z-index: 150;
+            pointer-events: auto;
+        }
+
+        .switch-btn:hover {
+            background: var(--neon-blue);
+            color: black;
+            box-shadow: 0 0 15px var(--neon-blue);
+        }
+
+        #switch-left {
+            left: 10px;
+        }
+
+        #switch-right {
+            right: 10px;
+        }
     </style>
 </head>
 
@@ -358,6 +392,9 @@
             <button id="main-button" class="btn">START GAME</button>
             <button id="home-button" class="btn btn-secondary hidden">HOME</button>
             <button id="ranking-button" class="btn btn-secondary">RANKING (TOP 30)</button>
+
+            <div id="switch-left" class="switch-btn">←</div>
+            <div id="switch-right" class="switch-btn">→</div>
         </div>
 
         <div id="bgm-toggle">🔊</div>
@@ -558,6 +595,15 @@
         const screenTitle = document.getElementById('screen-title');
         const bgmToggle = document.getElementById('bgm-toggle');
         const rankingButton = document.getElementById('ranking-button');
+        const switchLeft = document.getElementById('switch-left');
+        const switchRight = document.getElementById('switch-right');
+
+        const goToTetris = () => {
+            window.location.href = '../tetris/index.html';
+        };
+
+        switchLeft.onclick = goToTetris;
+        switchRight.onclick = goToTetris;
 
         let gameState = 'START_MENU';
         let score = 0, combo = 0, level = 1, speed = 5, distance = 0, slowTime = 0;
