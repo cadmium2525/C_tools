@@ -455,6 +455,13 @@
                     <p>接地した瞬間、他の4つの能力のいずれかに変化する。</p>
                 </div>
             </div>
+            <div class="help-item">
+                <img src="images/ヘンガー.png" class="help-icon">
+                <div class="help-text">
+                    <h3>HENGER</h3>
+                    <p>落下中に回転ボタンを押すと、別の形状にトランスフォームする。</p>
+                </div>
+            </div>
 
             <div
                 class="mt-8 mb-4 text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-700 pb-1">
@@ -529,9 +536,11 @@
                 this.bgmTimer = null;
                 this.currentNote = 0;
                 this.isMuted = localStorage.getItem('tetris_bgm_muted') === 'true';
-                this.bassline = [
-                    { f: 55, d: 0.5 }, { f: 0, d: 0.5 }, { f: 65.4, d: 0.5 }, { f: 0, d: 0.5 },
-                    { f: 49, d: 0.5 }, { f: 0, d: 0.5 }, { f: 55, d: 0.5 }, { f: 0, d: 0.5 }
+                this.melody = [
+                    { f: 261.63, d: 0.25 }, { f: 329.63, d: 0.25 }, { f: 392.00, d: 0.25 }, { f: 523.25, d: 0.25 },
+                    { f: 440.00, d: 0.25 }, { f: 349.23, d: 0.25 }, { f: 392.00, d: 0.5 },
+                    { f: 293.66, d: 0.25 }, { f: 349.23, d: 0.25 }, { f: 440.00, d: 0.25 }, { f: 587.33, d: 0.25 },
+                    { f: 493.88, d: 0.25 }, { f: 392.00, d: 0.25 }, { f: 523.25, d: 0.5 }
                 ];
             }
             async playBGM() {
@@ -556,9 +565,9 @@
             }
             loopBGM() {
                 if (!this.isPlayingBGM || this.isMuted) return;
-                const note = this.bassline[this.currentNote];
-                if (note.f > 0) this.tone(note.f, note.d * 0.8, 'sawtooth', 0.05);
-                this.currentNote = (this.currentNote + 1) % this.bassline.length;
+                const note = this.melody[this.currentNote];
+                if (note.f > 0) this.tone(note.f, note.d * 0.8, 'sine', 0.08); // より澄んだ音色に
+                this.currentNote = (this.currentNote + 1) % this.melody.length;
                 this.bgmTimer = setTimeout(() => this.loopBGM(), note.d * 1000);
             }
             tone(freq, dur, type = 'sine', vol = 0.1) {
@@ -577,6 +586,16 @@
                 const now = audioCtx.currentTime;
                 [440, 554.37, 659.25, 880].forEach((f, i) => {
                     this.tone(f, 0.4, 'sine', 0.1);
+                });
+            }
+            playTetrisBonus() {
+                const now = audioCtx.currentTime;
+                // 豪華な上昇アルペジオ
+                const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51, 1567.98, 2093.00];
+                notes.forEach((f, i) => {
+                    setTimeout(() => {
+                        this.tone(f, 0.6, 'sine', 0.15);
+                    }, i * 60);
                 });
             }
             playEarthquake() {
@@ -599,6 +618,54 @@
                 osc.start(now);
                 osc.stop(now + 0.6);
             }
+            playGhost() {
+                const now = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, now);
+                osc.frequency.exponentialRampToValueAtTime(110, now + 0.8);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.8);
+                osc.start(now);
+                osc.stop(now + 0.8);
+            }
+            playGel() {
+                const now = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                const filter = audioCtx.createBiquadFilter();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.linearRampToValueAtTime(50, now + 0.4);
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(1000, now);
+                filter.frequency.linearRampToValueAtTime(100, now + 0.4);
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(audioCtx.destination);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                osc.start(now);
+                osc.stop(now + 0.4);
+            }
+            playHenger() {
+                const now = audioCtx.currentTime;
+                [2, 4, 6].forEach(delay => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(440 * (1 + delay * 0.5), now + delay * 0.02);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    gain.gain.setValueAtTime(0.05, now + delay * 0.02);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + delay * 0.02 + 0.1);
+                    osc.start(now + delay * 0.02);
+                    osc.stop(now + delay * 0.02 + 0.1);
+                });
+            }
         }
         const sounds = new SoundSystem();
 
@@ -616,7 +683,7 @@
 
         // 特殊ミノの画像
         const SPECIAL_IMAGES = {};
-        const SPECIAL_TYPES = ['モノリス', 'ゲル', 'ゴースト', 'ゴーレム', 'はてな'];
+        const SPECIAL_TYPES = ['モノリス', 'ゲル', 'ゴースト', 'ゴーレム', 'はてな', 'ヘンガー'];
         SPECIAL_TYPES.forEach(type => {
             const img = new Image();
             img.src = `images/${type}.png`;
@@ -629,7 +696,7 @@
         let lines = 0;
         let isGameOver = true;
         let dropCounter = 0;
-        let dropInterval = 1000;
+        let dropInterval = 800;
         let lastTime = 0;
         let inventory = null;
         let animationId = null;
@@ -776,10 +843,11 @@
 
         function generateSpecialType() {
             const r = Math.random();
-            if (r < 0.5) return 'モノリス';
-            if (r < 0.65) return 'ゲル';
-            if (r < 0.8) return 'ゴースト';
-            if (r < 0.95) return 'ゴーレム';
+            if (r < 0.4) return 'モノリス';
+            if (r < 0.55) return 'ゲル';
+            if (r < 0.7) return 'ゴースト';
+            if (r < 0.85) return 'ゴーレム';
+            if (r < 0.95) return 'ヘンガー';
             return 'はてな';
         }
 
@@ -827,6 +895,19 @@
         }
 
         function playerRotate() {
+            if (player.specialType === 'ヘンガー') {
+                const pieces = 'ILJOTSZ';
+                const nextShape = pieces[Math.floor(Math.random() * pieces.length)];
+                const oldMatrix = player.matrix;
+                player.matrix = SHAPES[nextShape];
+                if (collide()) {
+                    player.matrix = oldMatrix;
+                } else {
+                    sounds.playHenger();
+                }
+                draw();
+                return;
+            }
             const m = player.matrix.map(row => [...row]);
             for (let y = 0; y < m.length; ++y) {
                 for (let x = 0; x < y; ++x) {
@@ -865,6 +946,7 @@
 
             if (player.specialType) {
                 handleSpecialEffect(affectedCells, player.specialType);
+                if (player.specialType === 'ゲル') sounds.playGel();
             }
 
             if (inventory?.active) {
@@ -892,6 +974,7 @@
             }
 
             if (effectType === 'ゴースト') {
+                sounds.playGhost();
                 cells.forEach(cell => {
                     // ミノ自身を消去
                     board[cell.y][cell.x] = 0;
@@ -924,11 +1007,11 @@
                         }
                         board[cell.y][cell.x] = 0;
                         boardSpecial[cell.y][cell.x] = null;
-                        sounds.playEarthquake();
                     }
                 });
 
-                // 揺れ演出
+                // 設置時は常にSEと揺れ演出を行う
+                sounds.playEarthquake();
                 const wrapper = document.getElementById('canvas-wrapper');
                 wrapper.classList.remove('shake');
                 void wrapper.offsetWidth;
@@ -943,6 +1026,13 @@
                     if (board[y][x] === 0) continue outer;
                     // ゲルが落下中の場合はそのラインを消さない
                     if (boardSpecial[y][x] === 'ゲル' && board[y + 1] && board[y + 1][x] === 0) continue outer;
+                    // 盤面全体に落下中のゲルがあるかチェック（より厳密な制御）
+                }
+                // 落下中のゲルが1つでもある場合は、ライン消去自体を保留する
+                for (let ry = 0; ry < ROWS; ry++) {
+                    for (let rx = 0; rx < COLS; rx++) {
+                        if (boardSpecial[ry][rx] === 'ゲル' && board[ry + 1] && board[ry + 1][rx] === 0) continue outer;
+                    }
                 }
                 const row = board.splice(y, 1)[0].fill(0);
                 const rowS = boardSpecial.splice(y, 1)[0].fill(null);
@@ -953,15 +1043,28 @@
             }
             if (cleared > 0) {
                 lines += cleared;
-                score += [0, 100, 300, 500, 800][cleared];
-                sounds.playLineClear();
+                if (cleared === 4) {
+                    score += 2000;
+                    sounds.playTetrisBonus();
+                } else {
+                    score += [0, 100, 300, 500, 800][cleared];
+                    sounds.playLineClear();
+                }
                 grantItem(); // アイテムはライン消去のたびに出るように
             }
         }
 
         function grantItem() {
-            const items = [{ id: 'bomb', name: 'BOMB' }, { id: 'slow', name: 'SLOW' }, { id: 'clear', name: 'CLEAR' }];
-            inventory = { ...items[Math.floor(Math.random() * items.length)], active: false };
+            const r = Math.random();
+            let selectedItem;
+            if (r < 0.45) {
+                selectedItem = { id: 'bomb', name: 'BOMB' };
+            } else if (r < 0.90) {
+                selectedItem = { id: 'slow', name: 'SLOW' };
+            } else {
+                selectedItem = { id: 'clear', name: 'CLEAR' };
+            }
+            inventory = { ...selectedItem, active: false };
             updateItemUI();
         }
 
@@ -1006,8 +1109,17 @@
         function updateItemUI() {
             const btn = document.getElementById('btn-item');
             const name = document.getElementById('item-name');
+
+            // 全カラークラスをリセット
+            btn.classList.remove('bg-amber-500', 'bg-emerald-500', 'bg-indigo-500', 'bg-amber-500');
+            btn.style.backgroundColor = '';
+
             if (inventory) {
                 name.innerText = inventory.name;
+                if (inventory.id === 'bomb') btn.style.backgroundColor = '#f59e0b'; // bg-amber-500
+                if (inventory.id === 'slow') btn.style.backgroundColor = '#10b981'; // bg-emerald-500
+                if (inventory.id === 'clear') btn.style.backgroundColor = '#6366f1'; // bg-indigo-500
+
                 if (inventory.active) btn.classList.add('item-active');
                 else btn.classList.remove('item-active');
             } else {
@@ -1019,7 +1131,7 @@
         function updateStats() {
             document.getElementById('score').innerText = score;
             document.getElementById('lines').innerText = lines;
-            dropInterval = Math.max(100, 1000 - (Math.floor(lines / 3) * 100));
+            dropInterval = Math.max(80, 800 - (Math.floor(lines / 2) * 80));
         }
 
         // Score History
@@ -1063,7 +1175,7 @@
         }
 
         function start() {
-            initBoard(); score = 0; lines = 0; dropInterval = 1000; inventory = null;
+            initBoard(); score = 0; lines = 0; dropInterval = 800; inventory = null;
             isGameOver = false; player.nextType = null; player.nextSpecialType = null; heldPieceType = null; heldSpecialType = null; holdUsed = false;
             overlay.style.display = 'none';
             sounds.playBGM();
