@@ -894,12 +894,33 @@
             draw();
         }
 
+        function rotateMatrix(matrix) {
+            const m = matrix.map(row => [...row]);
+            for (let y = 0; y < m.length; ++y) {
+                for (let x = 0; x < y; ++x) {
+                    [m[x][y], m[y][x]] = [m[y][x], m[x][y]];
+                }
+            }
+            m.forEach(row => row.reverse());
+            return m;
+        }
+
         function playerRotate() {
             if (player.specialType === 'ヘンガー') {
                 const pieces = 'ILJOTSZ';
                 const nextShape = pieces[Math.floor(Math.random() * pieces.length)];
                 const oldMatrix = player.matrix;
-                player.matrix = SHAPES[nextShape];
+
+                // 新しい形状を取得
+                let newMatrix = SHAPES[nextShape];
+
+                // 0〜3回のランダムな回転を適用
+                const rotations = Math.floor(Math.random() * 4);
+                for (let i = 0; i < rotations; i++) {
+                    newMatrix = rotateMatrix(newMatrix);
+                }
+
+                player.matrix = newMatrix;
                 if (collide()) {
                     player.matrix = oldMatrix;
                 } else {
@@ -908,13 +929,8 @@
                 draw();
                 return;
             }
-            const m = player.matrix.map(row => [...row]);
-            for (let y = 0; y < m.length; ++y) {
-                for (let x = 0; x < y; ++x) {
-                    [m[x][y], m[y][x]] = [m[y][x], m[x][y]];
-                }
-            }
-            m.forEach(row => row.reverse());
+
+            const m = rotateMatrix(player.matrix);
             const oldM = player.matrix;
             player.matrix = m;
             if (collide()) {
