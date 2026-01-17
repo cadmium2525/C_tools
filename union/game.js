@@ -2,17 +2,17 @@ const { Engine, Render, Runner, World, Bodies, Body, Events, Composite } = Matte
 
 // モンスター定義（さらに一回り縮小）
 const MONSTERS = [
-    { name: 'ピクシー', img: 'images/ピクシー.png', size: 12, score: 2 },
-    { name: 'ハム', img: 'images/ハム.png', size: 17, score: 4 },
-    { name: 'ゲル', img: 'images/ゲル.png', size: 24, score: 8 },
-    { name: 'スエゾー', img: 'images/スエゾー.png', size: 31, score: 16 },
-    { name: 'モッチー', img: 'images/モッチー.png', size: 40, score: 32 },
-    { name: 'ライガー', img: 'images/ライガー.png', size: 50, score: 64 },
-    { name: 'ディノ', img: 'images/ディノ.png', size: 62, score: 128 },
-    { name: 'ゴーレム', img: 'images/ゴーレム.png', size: 75, score: 256 },
-    { name: 'ドラゴン', img: 'images/ドラゴン.png', size: 88, score: 512 },
-    { name: 'シンリュウ', img: 'images/シンリュウ.png', size: 105, score: 1024 },
-    { name: 'ヒノトリ', img: 'images/ヒノトリ.png', size: 122, score: 2048 }
+    { name: 'ピクシー', img: 'images/ピクシー.png', size: 10, score: 2 },
+    { name: 'ハム', img: 'images/ハム.png', size: 14, score: 4 },
+    { name: 'ゲル', img: 'images/ゲル.png', size: 20, score: 8 },
+    { name: 'スエゾー', img: 'images/スエゾー.png', size: 26, score: 16 },
+    { name: 'モッチー', img: 'images/モッチー.png', size: 34, score: 32 },
+    { name: 'ライガー', img: 'images/ライガー.png', size: 42, score: 64 },
+    { name: 'ディノ', img: 'images/ディノ.png', size: 52, score: 128 },
+    { name: 'ゴーレム', img: 'images/ゴーレム.png', size: 64, score: 256 },
+    { name: 'ドラゴン', img: 'images/ドラゴン.png', size: 75, score: 512 },
+    { name: 'シンリュウ', img: 'images/シンリュウ.png', size: 90, score: 1024 },
+    { name: 'ヒノトリ', img: 'images/ヒノトリ.png', size: 105, score: 2048 }
 ];
 
 class AudioManager {
@@ -188,7 +188,7 @@ class Game {
         // 右壁（x=widthに配置。厚みの半分を外側へシフト）
         this.rightWall = Bodies.rectangle(this.width + wallThickness / 2, this.height / 2, wallThickness, this.height, wallOptions);
 
-        this.deadLine = 70;
+        this.deadLine = 50;
 
         World.add(this.world, [this.ground, this.leftWall, this.rightWall]);
 
