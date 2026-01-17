@@ -137,6 +137,7 @@
             margin: 0 0 10px;
             background: linear-gradient(to right, var(--neon-blue), var(--neon-pink));
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
             text-transform: uppercase;
             font-style: italic;
@@ -601,8 +602,11 @@
         const goToTetris = () => {
             window.location.href = '../tetris/index.html';
         };
+        const goToUnion = () => {
+            window.location.href = '../union/index.html';
+        };
 
-        switchLeft.onclick = goToTetris;
+        switchLeft.onclick = goToUnion;
         switchRight.onclick = goToTetris;
 
         let gameState = 'START_MENU';

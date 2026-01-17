@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>モンスタースイカゲーム</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Matter.js 物理エンジン -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <!-- Google Fonts -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700&family=Noto+Sans+JP:wght@400;700&display=swap"
+        rel="stylesheet">
+    <style>
+        .game-title {
+            font-size: 3rem;
+            font-weight: 800;
+            color: #38bdf8;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 0 20px rgba(56, 189, 248, 0.5);
+        }
+
+        .game-subtitle {
+            font-size: 1rem;
+            color: #94a3b8;
+            margin-bottom: 2rem;
+            letter-spacing: 0.1em;
+        }
+
+        #home-screen {
+            position: absolute;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+        #start-btn-home {
+            padding: 15px 40px;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #fff;
+            background: #38bdf8;
+            border: none;
+            border-radius: 9999px;
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+
+        #start-btn-home:active {
+            transform: scale(0.95);
+        }
+
+        .switch-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid #ffcc00;
+            color: #ffcc00;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: 0.2s;
+            z-index: 150;
+            user-select: none;
+        }
+
+        .switch-btn:hover {
+            background: #ffcc00;
+            color: black;
+            box-shadow: 0 0 10px #ffcc00;
+        }
+
+        #switch-left {
+            left: 10px;
+        }
+
+        #switch-right {
+            right: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="game-container">
+        <header>
+            <div id="score-container">
+                <div class="label">SCORE</div>
+                <div id="score">0</div>
+            </div>
+            <div id="next-container">
+                <div class="label">NEXT</div>
+                <div id="next-monster">
+                    <img id="next-img" src="" alt="Next">
+                </div>
+            </div>
+            <div id="best-container">
+                <div class="label">BEST</div>
+                <div id="best-score">0</div>
+            </div>
+            <button id="bgm-toggle" class="bgm-btn" title="BGM ON/OFF">🎵</button>
+        </header>
+
+        <div id="game-canvas-wrapper">
+            <!-- Matter.js がここにキャンバスを生成します -->
+            <div id="guide-line"></div>
+            <div id="current-monster-preview"></div>
+        </div>
+
+        <div id="evolution-chart">
+            <div class="evolution-track">
+                <!-- JavaScriptで動的に生成します -->
+            </div>
+        </div>
+
+        <div id="home-screen">
+            <h1 class="game-title">UNION</h1>
+            <p class="game-subtitle">MONSTER UNION GAME</p>
+            <button id="start-btn-home">START GAME</button>
+            <div id="switch-left" class="switch-btn">←</div>
+            <div id="switch-right" class="switch-btn">→</div>
+        </div>
+
+        <div id="game-over-modal" class="modal hidden">
+            <div class="modal-content">
+                <h2>GAME OVER</h2>
+                <div class="final-score-label">FINAL SCORE</div>
+                <div id="final-score">0</div>
+                <button id="restart-btn">RETRY</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+    <script>
+        document.getElementById('switch-left').onclick = () => {
+            window.location.href = '../tetris/index.html';
+        };
+        document.getElementById('switch-right').onclick = () => {
+            window.location.href = '../neon_dash/index.html';
+        };
+
+        const homeScreen = document.getElementById('home-screen');
+        document.getElementById('start-btn-home').onclick = () => {
+            homeScreen.style.display = 'none';
+        };
+    </script>
+</body>
+
+</html>
