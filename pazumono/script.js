@@ -27,7 +27,7 @@ const SKILLS = {
     'fire_wave': { name: 'ファイアウェーブ', desc: '全ドロップを火属性に変換', cost: 43, type: 'convert', color: ELEMENTS.RED },
 
     // Plant (Green)
-    'mitsu': { name: 'ミツ', desc: '全敵の行動を3ターン遅らせる', cost: 26, type: 'delay', val: 3 },
+    'mitsu': { name: 'ミツ', desc: '全敵の行動を3ターン遅らせる', cost: 26, type: 'delay', delay: 3 },
     'flower_beam': { name: 'フラワービーム', desc: '大ダメージ＋木ドロップを生成', cost: 42, type: 'damage_spawn', val: 200, spawnColor: ELEMENTS.GREEN, spawnCount: 6 },
 
     // Undine (Blue)
@@ -295,7 +295,9 @@ class Board {
             document.removeEventListener('mouseup', handleEnd);
             document.removeEventListener('touchend', handleEnd);
 
-            this.game.processTurn();
+            if (this.isTimerStarted) {
+                this.game.processTurn();
+            }
         };
 
         this.element.addEventListener('mousedown', handleStart);
@@ -736,6 +738,7 @@ class Game {
                 const delay = skill.delay || 1;
                 this.enemies.forEach(e => {
                     e.currentTimer += delay;
+                    if (e.timerEl) e.timerEl.textContent = `あと${e.currentTimer}`;
                     this.showDamageText(`Delay +${delay}`, 'cyan', e.el);
                 });
                 break;
@@ -743,7 +746,7 @@ class Game {
 
         // スキルの演出待ち
         await new Promise(r => setTimeout(r, 800));
-        await this.checkLevelClear();
+        await this.checkLevelClear(false); // スキル使用時はターンを経過させない
         this.isProcessing = false;
     }
 
@@ -848,12 +851,8 @@ class Game {
                 const type = group.type;
                 const count = group.coords.length;
 
-                if (erasedCounts[type] !== undefined) {
-                    erasedCounts[type] += count;
-                }
-
                 if (type === ELEMENTS.HEART) {
-                    totalHeal += 20 * (count / 3);
+                    totalHeal += 100 * (count / 3); // 回復量を20から100に上方修正
                 } else if (type <= 5) { // Damage types
                     totalDamage[type] += 10 * (count / 3);
                     if (count >= CONFIG.aoeThreshold) {
@@ -909,14 +908,14 @@ class Game {
         this.comboDisplay.classList.add('pop');
     }
 
-    async checkLevelClear() {
+    async checkLevelClear(isTurnEnd = true) {
         if (this.enemies.length === 0 && !this.isLevelClearing) {
             this.isLevelClearing = true;
             this.audio.playClearSE();
             await new Promise(r => setTimeout(r, 1000));
             this.startLevel();
             this.isLevelClearing = false;
-        } else if (this.enemies.length > 0) {
+        } else if (this.enemies.length > 0 && isTurnEnd) {
             // 残っていれば敵のターンへ
             await this.enemyTurn();
         }
