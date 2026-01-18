@@ -61,6 +61,28 @@ const ENEMY_IMAGES = [
     'メタルナー.png', 'モノリス.png', 'ユグドラシル.png', 'ワーム.png'
 ];
 
+// モンスターのオーラ定義
+const AURA_COLORS = {
+    '青': '#4444ff',
+    '赤': '#ff4444',
+    '黒': '#333333',
+    '白': '#ffffff',
+    '緑': '#44ff44',
+    '黄色': '#ffff44'
+};
+
+const MONSTER_AURAS = {
+    'アーク': '青', 'アローヘッド': '赤', 'イルミネ': '黒', 'ウンディーネ': '青',
+    'ガリ': '白', 'カワズモー': '緑', 'キジン': '黄色', 'キュービ': '白',
+    'グジラ': '青', 'ゲル': '青', 'ケンタウロス': '緑', 'ゴースト': '黄色',
+    'ゴーレム': '黒', 'ジョーカー': '黒', 'シンリュウ': '青', 'スエゾー': '黄色',
+    'ディノ': '緑', 'デュラハン': '白', 'ドラゴン': '赤', 'ナーガ': '黒',
+    'ニャー': '白', 'ネンドロ': '黄色', 'ハム': '黄色', 'ピクシー': '赤',
+    'ヒノトリ': '赤', 'プラント': '緑', 'ヘンガー': '黄色', 'メタルナー': '白',
+    'モッチー': '赤', 'モノリス': '黒', 'ユグドラシル': '緑', 'ライガー': '青',
+    'ワーム': '黄色'
+};
+
 // --- Classes ---
 
 class Monster {
@@ -106,6 +128,9 @@ class Board {
         this.width = CONFIG.cols;
         this.height = CONFIG.rows;
         this.element = document.getElementById('board');
+        this.timerContainer = document.getElementById('timer-bar-container');
+        this.timerBar = document.getElementById('timer-bar-fill');
+
         this.selectedOrb = null;
         this.isDragging = false;
         this.startPos = { x: 0, y: 0 }; // Touch/Mouse start coordinates
@@ -126,7 +151,7 @@ class Board {
                 } while (this.createsMatch(r, c, row, type));
 
                 const orb = this.createOrbElement(type, r, c);
-                row.push({ type, el: orb });
+                row.push({ type, el: orb, isSkillGenerated: false });
                 this.element.appendChild(orb);
             }
             this.grid.push(row);
@@ -175,15 +200,13 @@ class Board {
             this.game.audio.init();
 
             this.isDragging = true;
-            this.dragStartTime = Date.now();
+            this.isTimerStarted = false; // タイマー開始フラグ
 
-            // Start Timer Check
+            // Timer UI の初期化（表示のみ）
             if (this.timerId) clearInterval(this.timerId);
-            this.timerId = setInterval(() => {
-                if (Date.now() - this.dragStartTime > CONFIG.moveTime) {
-                    handleEnd();
-                }
-            }, 100);
+            this.timerId = null;
+            this.timerContainer.classList.add('active');
+            this.timerBar.style.transform = 'scaleX(1)';
 
             this.selectedOrb = target;
             this.selectedOrb.style.opacity = '0.5';
@@ -224,6 +247,21 @@ class Board {
                 const targetR = parseInt(target.dataset.r);
                 const targetC = parseInt(target.dataset.c);
 
+                // 最初の移動でタイマー開始
+                if (!this.isTimerStarted) {
+                    this.isTimerStarted = true;
+                    this.dragStartTime = Date.now();
+                    this.timerId = setInterval(() => {
+                        const elapsed = Date.now() - this.dragStartTime;
+                        const ratio = Math.max(0, 1 - elapsed / CONFIG.moveTime);
+                        this.timerBar.style.transform = `scaleX(${ratio})`;
+
+                        if (elapsed > CONFIG.moveTime) {
+                            handleEnd();
+                        }
+                    }, 50);
+                }
+
                 this.swapOrbs(this.gridPos.r, this.gridPos.c, targetR, targetC);
                 this.gridPos = { r: targetR, c: targetC };
                 this.game.audio.playSwapSE();
@@ -243,6 +281,8 @@ class Board {
                 this.dragEl.remove();
                 this.dragEl = null;
             }
+
+            this.timerContainer.classList.remove('active');
 
             if (this.selectedOrb) {
                 this.selectedOrb.style.opacity = '1';
@@ -416,6 +456,7 @@ class Board {
 
                         // Data update
                         dst.type = src.type;
+                        dst.isSkillGenerated = src.isSkillGenerated; // フラグを継承
                         dst.el.dataset.type = src.type;
                         dst.el.classList.toggle('square', dst.type === ELEMENTS.HEART);
 
@@ -435,6 +476,7 @@ class Board {
                 const dst = this.grid[writePos][c];
                 const newType = this.getRandomType();
                 dst.type = newType;
+                dst.isSkillGenerated = false; // 新しいドロップは通常ドロップ
                 dst.el.dataset.type = newType;
                 dst.el.classList.toggle('square', dst.type === ELEMENTS.HEART);
 
@@ -470,6 +512,7 @@ class Board {
             for (let c = 0; c < this.width; c++) {
                 const orb = this.grid[r][c];
                 orb.type = targetType;
+                orb.isSkillGenerated = true; // スキル生成フラグを設定
                 orb.el.dataset.type = targetType;
                 orb.el.classList.toggle('square', targetType === ELEMENTS.HEART);
             }
@@ -497,6 +540,7 @@ class Board {
         toChange.forEach(({ r, c }) => {
             const orb = this.grid[r][c];
             orb.type = targetType;
+            orb.isSkillGenerated = true; // スキル生成フラグを設定
             orb.el.dataset.type = targetType;
             orb.el.classList.toggle('square', targetType === ELEMENTS.HEART);
 
@@ -527,6 +571,7 @@ class Game {
         this.partyContainer = document.getElementById('party-container');
         this.hpBar = document.getElementById('player-hp-bar');
         this.hpText = document.getElementById('hp-text');
+        this.comboDisplay = document.getElementById('combo-display');
         this.modal = document.getElementById('modal-overlay');
 
         this.initParty();
@@ -649,9 +694,11 @@ class Game {
         document.body.appendChild(skillModal);
     }
 
-    executeSkill(monster, skill) {
+    async executeSkill(monster, skill) {
+        if (this.isProcessing) return;
         if (monster.guts < skill.cost) return;
 
+        this.isProcessing = true;
         monster.guts -= skill.cost;
         this.updateGutsUI();
 
@@ -668,14 +715,6 @@ class Game {
                 this.dealDamageToRandomEnemy(skill.val, monster.element);
                 break;
             case 'variable_damage':
-                // God Rising multiplier based on colors
-                // Simply: count current board colors? Or just random big damage?
-                // "Skill発動ターン時に消したドロップの色の種類が多いほど"
-                // This requires a persistent buff state OR evaluating it at end of turn.
-                // Let's simplified: Instant damage x colors on board NOW?
-                // Or just random multiplier.
-                // Better: "Buff" logic is complex to add now. Let's do instant damage based on current board state (diversity).
-                // Calc color diversity on board
                 const boardColors = new Set();
                 this.board.grid.forEach(row => row.forEach(cell => boardColors.add(cell.type)));
                 const diversity = boardColors.size;
@@ -701,14 +740,23 @@ class Game {
                 });
                 break;
         }
+
+        // スキルの演出待ち
+        await new Promise(r => setTimeout(r, 800));
+        await this.checkLevelClear();
+        this.isProcessing = false;
     }
+
 
     addGutsToParty(counts) {
         this.party.forEach(m => {
             if (counts[m.element] > 0) {
-                // 1.5x accumulation rate
-                const amount = Math.floor(counts[m.element] * 1.5);
-                m.addGuts(amount);
+                // スキル生成ドロップ分を除いたカウントでガッツ加算
+                const naturalCount = counts[m.element];
+                if (naturalCount > 0) {
+                    const amount = Math.floor(naturalCount * 1.5);
+                    m.addGuts(amount);
+                }
             }
         });
         this.updateGutsUI();
@@ -750,13 +798,17 @@ class Game {
             const enemy = new Monster(data, true, this.floor);
             this.enemies.push(enemy);
 
+            // オーラ色の取得
+            const auraColorName = MONSTER_AURAS[enemy.name] || '白';
+            const shadowColor = AURA_COLORS[auraColorName] || '#ffffff';
+
             // UI
             const div = document.createElement('div');
             div.className = 'enemy';
             // Visual Aura
-            div.style.border = `3px solid ${this.getElementColor(enemy.element)}`;
+            div.style.border = `3px solid ${shadowColor}`;
             div.style.borderRadius = '8px';
-            div.style.boxShadow = `0 0 10px ${this.getElementColor(enemy.element)}`;
+            div.style.boxShadow = `0 0 15px ${shadowColor}`;
             div.style.position = 'relative';
 
             div.innerHTML = `
@@ -809,6 +861,13 @@ class Game {
                     }
                 }
 
+                // スキル生成でないドロップのみガッツ加算用にカウント
+                const naturalOrbs = group.coords.filter(({ r, c }) => !this.board.grid[r][c].isSkillGenerated);
+                erasedCounts[type] += naturalOrbs.length;
+
+                // コンボ表示更新
+                this.updateComboUI(comboCount);
+
                 await this.board.fadeOrbs(group.coords);
             }
 
@@ -816,30 +875,51 @@ class Game {
             await new Promise(r => setTimeout(r, 400)); // Drop animation wait
         }
 
+        // コンボに応じた倍率計算 (低め: 1コンボにつき +5%)
+        const comboMultiplier = 1.0 + (comboCount - 1) * 0.05;
+
         // Apply Results
         if (comboCount > 0) {
             // Guts Accumulation (Per Element)
             this.addGutsToParty(erasedCounts);
 
-            // Heal
+            // Heal (倍率適用)
             if (totalHeal > 0) {
-                this.heal(Math.floor(totalHeal * (1 + (comboCount * 0.1))));
+                this.heal(Math.floor(totalHeal * comboMultiplier));
             }
 
-            // Attack
-            await this.playerAttack(totalDamage, comboCount, aoeFlags);
+            // Attack (倍率適用)
+            await this.playerAttack(totalDamage, comboMultiplier, aoeFlags);
+
+            // コンボ表示を消す
+            setTimeout(() => {
+                this.comboDisplay.classList.add('hidden');
+            }, 1000);
         }
 
-        // Check Clear
-        if (this.enemies.length === 0) {
+        // Check Clear (スキルによる撃破も含めてここで統合チェック)
+        await this.checkLevelClear();
+        this.isProcessing = false;
+    }
+
+    updateComboUI(count) {
+        this.comboDisplay.textContent = `${count} Combo`;
+        this.comboDisplay.classList.remove('hidden', 'pop');
+        void this.comboDisplay.offsetWidth; // reflow
+        this.comboDisplay.classList.add('pop');
+    }
+
+    async checkLevelClear() {
+        if (this.enemies.length === 0 && !this.isLevelClearing) {
+            this.isLevelClearing = true;
             this.audio.playClearSE();
-            setTimeout(() => this.startLevel(), 1000);
-        } else {
-            // Enemy Turn
+            await new Promise(r => setTimeout(r, 1000));
+            this.startLevel();
+            this.isLevelClearing = false;
+        } else if (this.enemies.length > 0) {
+            // 残っていれば敵のターンへ
             await this.enemyTurn();
         }
-
-        this.isProcessing = false;
     }
 
     heal(amount) {
@@ -848,7 +928,7 @@ class Game {
         this.showDamageText(amount, 'green', this.hpBar);
     }
 
-    async playerAttack(damageDict, combo, aoeFlags) {
+    async playerAttack(damageDict, comboMultiplier, aoeFlags) {
         // Calculate total dmg per element
         for (let el = 0; el < 6; el++) { // 6 Elements
             if (damageDict[el] > 0) {
@@ -856,14 +936,7 @@ class Game {
                 const attackers = this.party.filter(m => m.element === el);
                 if (attackers.length === 0) continue;
 
-                // Base Damage for this element
-                // Split damage among attackers? Or each attacker does full? 
-                // P&D: Each monster has ATK. (ATK * Multiplier).
-                // Here we calculated "totalDamage" based on orbs (e.g. 10 * count/3).
-                // Let's use that as the Multiplier %.
-                // damageDict[el] = 10 means 100% (1 match). 1 orb = 10 value.
-                // Multiplier = damageDict[el] / 10.
-                const multiplier = (damageDict[el] / 10) * (1 + (combo * 0.25));
+                const multiplier = (damageDict[el] / 10) * comboMultiplier;
 
                 // Attack SE
                 this.audio.playAttackSE();
@@ -872,12 +945,11 @@ class Game {
                     const dmg = Math.floor(m.atk * multiplier);
                     if (aoeFlags[el]) {
                         // AOE: Attack ALL enemies
-                        for (const enemy of this.enemies) { // Snapshot copy not needed if we filter dead instantly?
-                            // Iterate carefully
+                        for (const enemy of [...this.enemies]) {
                             this.dealDamage(dmg, m.element, enemy);
                         }
                     } else {
-                        // Single: Random target (or focused if implemented)
+                        // Single: Random target
                         const target = this.enemies[Math.floor(Math.random() * this.enemies.length)];
                         if (target) this.dealDamage(dmg, m.element, target);
                     }
@@ -889,10 +961,6 @@ class Game {
     }
 
     getAffinityMultiplier(atkEl, defEl) {
-        // Red(0) -> Green(1) -> Yellow(2) -> Blue(3) -> Red(0)
-        // White(4) <-> Black(5)
-
-        // 4-cycle
         if (atkEl <= 3 && defEl <= 3) {
             // Check Strong
             if ((atkEl === ELEMENTS.RED && defEl === ELEMENTS.GREEN) ||
@@ -953,6 +1021,7 @@ class Game {
     }
 
     async enemyTurn() {
+        if (this.enemies.length === 0) return;
         for (const enemy of this.enemies) {
             enemy.currentTimer--;
             if (enemy.timerEl) {
@@ -994,6 +1063,7 @@ class Game {
     }
 
     showDamageText(val, color, targetEl) {
+        if (!targetEl) return;
         const div = document.createElement('div');
         div.className = 'damage-text';
         div.textContent = val;
