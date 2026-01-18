@@ -1,0 +1,571 @@
+:root {
+    --orb-size: 60px;
+    --board-cols: 6;
+    --board-rows: 5;
+    --primary-color: #333;
+    --header-height: 40px;
+    --status-height: 80px;
+    --board-height: calc(var(--orb-size) * var(--board-rows));
+    --battle-height: 200px;
+    /* 残りのスペース */
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    /* テキスト選択防止 */
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+}
+
+body {
+    font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
+    background-color: #1a1a1a;
+    color: white;
+    overflow: hidden;
+    /* スクロール防止 */
+    display: flex;
+    justify-content: center;
+    height: 100vh;
+    width: 100vw;
+}
+
+#game-container {
+    width: 100%;
+    max-width: 480px;
+    /* モバイル最適化、PCではこれ以上広がらない */
+    height: 100%;
+    background-color: #2a2a2a;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+/* Header */
+#game-header {
+    height: var(--header-height);
+    background-color: #111;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 15px;
+    font-size: 18px;
+    font-weight: bold;
+    border-bottom: 1px solid #444;
+}
+
+/* Battle Area */
+#battle-area {
+    flex-grow: 1;
+    /* 余ったスペースを埋める */
+    background-image: linear-gradient(to bottom, #2b32b2, #1488cc);
+    /* 仮の背景 */
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    /* 敵を下揃え */
+    padding-bottom: 20px;
+    overflow: hidden;
+}
+
+#enemy-container {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 10px;
+    width: 100%;
+}
+
+.enemy {
+    width: 80px;
+    height: 80px;
+    position: relative;
+    transition: transform 0.2s;
+}
+
+.enemy img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 0 5px rgba(0, 0, 0, 0.5));
+}
+
+.enemy-hp-bar {
+    position: absolute;
+    top: -10px;
+    left: 0;
+    width: 100%;
+    height: 5px;
+    background-color: #333;
+    border: 1px solid #000;
+}
+
+.enemy-hp-fill {
+    height: 100%;
+    background-color: red;
+    width: 100%;
+    transition: width 0.3s;
+}
+
+/* Status Area */
+#status-area {
+    height: var(--status-height);
+    background-color: #222;
+    padding: 5px 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+}
+
+.hp-bar-container {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+}
+
+.hp-bar-bg {
+    flex-grow: 1;
+    height: 15px;
+    background-color: #444;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+}
+
+.hp-bar-fill {
+    height: 100%;
+    background-color: limegreen;
+    transition: width 0.3s ease-out;
+}
+
+#party-container {
+    display: flex;
+    justify-content: space-around;
+    height: 40px;
+}
+
+.party-member {
+    width: 40px;
+    height: 40px;
+    background-color: #333;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.party-member img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+/* Puzzle Board */
+#board-area {
+    background-color: #111;
+    padding: 5px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#board {
+    display: grid;
+    grid-template-columns: repeat(var(--board-cols), 1fr);
+    grid-template-rows: repeat(var(--board-rows), 1fr);
+    width: 100%;
+    aspect-ratio: 6 / 5;
+    background-color: #000;
+    gap: 2px;
+    touch-action: none;
+    /* ブラウザ標準のタッチアクション無効化 */
+    position: relative;
+}
+
+.orb {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 20px;
+    /* 仮の文字表示用 */
+    cursor: pointer;
+    transition: transform 0.1s, opacity 0.2s;
+    background-size: 90%;
+    background-position: center;
+    background-repeat: no-repeat;
+    position: relative;
+    /* z-index用 */
+}
+
+.orb.dragging {
+    opacity: 0.8;
+    z-index: 100;
+    transform: scale(1.1);
+    box-shadow: 0 0 10px white;
+}
+
+.orb.hidden {
+    visibility: hidden;
+}
+
+/* Orb Types (Colors) */
+.orb[data-type="0"] {
+    background-color: #ff4444;
+}
+
+/* Red */
+.orb[data-type="1"] {
+    background-color: #44ff44;
+}
+
+/* Green */
+.orb[data-type="2"] {
+    background-color: #ffff44;
+}
+
+/* Yellow */
+.orb[data-type="3"] {
+    background-color: #4444ff;
+}
+
+/* Blue */
+.orb[data-type="4"] {
+    background-color: #eeeeee;
+}
+
+/* White */
+.orb[data-type="5"] {
+    background-color: #333333;
+}
+
+/* Black */
+.orb[data-type="6"] {
+    background-color: #ff44ff;
+}
+
+/* Heart */
+
+.orb.square {
+    border-radius: 10% !important;
+    /* Rounded square */
+    background-color: #ff66cc !important;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.orb.square::after {
+    content: '♥';
+    font-size: 30px;
+    color: white;
+    text-shadow: 0 0 5px #ff0066;
+}
+
+/* Party & UI */
+.party-member {
+    width: 45px;
+    height: 45px;
+    background-color: #333;
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+    /* For Guts overlay */
+    border: 2px solid #555;
+    /* Default, overridden by JS */
+    cursor: pointer;
+}
+
+.guts-val {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    font-size: 10px;
+    padding: 1px 3px;
+    border-top-left-radius: 3px;
+}
+
+/* Skill Modal */
+.skill-modal {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.9);
+    z-index: 2000;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    animation: fadeIn 0.2s;
+}
+
+.skill-item {
+    width: 80%;
+    max-width: 300px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.skill-btn {
+    padding: 10px 20px;
+    font-size: 14px;
+    background-color: #ffd700;
+    color: #000;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    width: 100%;
+}
+
+.skill-desc {
+    font-size: 11px;
+    color: #aaa;
+    text-align: center;
+}
+
+.skill-btn.disabled {
+    background-color: #555;
+    color: #888;
+    cursor: not-allowed;
+}
+
+.close-btn {
+    background-color: transparent;
+    border: 1px solid #777;
+    color: #ddd;
+    margin-top: 20px;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* Overlay */
+#modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.85);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    transition: opacity 0.3s;
+}
+
+#modal-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+#start-screen,
+#game-over-screen {
+    text-align: center;
+    color: white;
+}
+
+.hidden {
+    display: none !important;
+}
+
+h1 {
+    font-size: 32px;
+    margin-bottom: 20px;
+    color: #ffd700;
+    text-shadow: 0 0 10px #ff0000;
+}
+
+button {
+    padding: 10px 20px;
+    font-size: 18px;
+    background-color: #ffd700;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 20px;
+}
+
+/* Animations */
+@keyframes shake {
+    0% {
+        transform: translate(1px, 1px) rotate(0deg);
+    }
+
+    10% {
+        transform: translate(-1px, -2px) rotate(-1deg);
+    }
+
+    20% {
+        transform: translate(-3px, 0px) rotate(1deg);
+    }
+
+    30% {
+        transform: translate(3px, 2px) rotate(0deg);
+    }
+
+    40% {
+        transform: translate(1px, -1px) rotate(1deg);
+    }
+
+    50% {
+        transform: translate(-1px, 2px) rotate(-1deg);
+    }
+
+    60% {
+        transform: translate(-3px, 1px) rotate(0deg);
+    }
+
+    70% {
+        transform: translate(3px, 1px) rotate(-1deg);
+    }
+
+    80% {
+        transform: translate(-1px, -1px) rotate(1deg);
+    }
+
+    90% {
+        transform: translate(1px, 2px) rotate(0deg);
+    }
+
+    100% {
+        transform: translate(1px, -2px) rotate(-1deg);
+    }
+}
+
+.shake {
+    animation: shake 0.5s;
+    animation-iteration-count: 1;
+}
+
+.damage-text {
+    position: absolute;
+    color: white;
+    font-weight: bold;
+    font-size: 24px;
+    text-shadow: 2px 2px 0 #000;
+    pointer-events: none;
+    animation: floatUp 0.8s ease-out forwards;
+    z-index: 50;
+}
+
+@keyframes floatUp {
+    0% {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translateY(-50px) scale(1.2);
+        opacity: 0;
+    }
+}
+
+.enemy-timer {
+    position: absolute;
+    top: -25px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: bold;
+    white-space: nowrap;
+    z-index: 10;
+    border: 1px solid #555;
+    pointer-events: none;
+}
+
+.skill-flash {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: white;
+    opacity: 0;
+    z-index: 5000;
+    pointer-events: none;
+    animation: flash 0.4s ease-out;
+}
+
+@keyframes flash {
+    0% {
+        opacity: 0.8;
+    }
+
+    100% {
+        opacity: 0;
+    }
+}
+
+.bgm-toggle-btn {
+    padding: 4px 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: background 0.2s;
+    white-space: nowrap;
+}
+
+.bgm-toggle-btn:active {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.switch-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid #ffd700;
+    color: #ffd700;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    font-size: 1.5rem;
+    transition: 0.2s;
+    z-index: 1500;
+    pointer-events: auto;
+}
+
+.switch-btn:hover {
+    background: #ffd700;
+    color: black;
+    box-shadow: 0 0 15px #ffd700;
+}
+
+#switch-left {
+    left: 10px;
+}
+
+#switch-right {
+    right: 10px;
+}
