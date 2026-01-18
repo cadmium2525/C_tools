@@ -278,6 +278,14 @@ class Game {
         }
     }
 
+    resetBestScore() {
+        if (!confirm('ベストスコアをリセットしますか？')) return;
+        this.bestScore = 0;
+        localStorage.removeItem('monster_suika_best');
+        document.getElementById('best-score').textContent = this.bestScore;
+        alert('スコアをリセットしました。');
+    }
+
     updateNextUI() {
         const nextImg = document.getElementById('next-img');
         nextImg.src = MONSTERS[this.nextMonsterIndex].img;
@@ -481,6 +489,10 @@ class Game {
 
     mergeMonsters(bodyA, bodyB) {
         if (bodyA.isStatic || bodyB.isStatic) return;
+        if (bodyA.isMerged || bodyB.isMerged) return; // 二重合体防止用のガード
+
+        bodyA.isMerged = true;
+        bodyB.isMerged = true;
 
         const index = bodyA.monsterIndex;
 
@@ -551,5 +563,5 @@ class Game {
 }
 
 window.onload = () => {
-    new Game();
+    window.game = new Game();
 };

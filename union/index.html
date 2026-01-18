@@ -129,6 +129,7 @@
             <h1 class="game-title">UNION</h1>
             <p class="game-subtitle">MONSTER UNION GAME</p>
             <button id="start-btn-home">START GAME</button>
+            <button id="reset-score-btn">RESET BEST SCORE</button>
             <div id="switch-left" class="switch-btn">←</div>
             <div id="switch-right" class="switch-btn">→</div>
         </div>
@@ -155,6 +156,12 @@
         const homeScreen = document.getElementById('home-screen');
         document.getElementById('start-btn-home').onclick = () => {
             homeScreen.style.display = 'none';
+        };
+
+        document.getElementById('reset-score-btn').onclick = () => {
+            if (window.game) {
+                window.game.resetBestScore();
+            }
         };
     </script>
 </body>

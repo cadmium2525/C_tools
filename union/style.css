@@ -351,3 +351,26 @@ header {
         font-size: 1.5rem;
     }
 }
+
+#reset-score-btn {
+    margin-top: 20px;
+    padding: 10px 20px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    background: transparent;
+    border: 1px solid var(--glass-border);
+    border-radius: 9999px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+#reset-score-btn:hover {
+    color: #ef4444;
+    border-color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+}
+
+#reset-score-btn:active {
+    transform: scale(0.95);
+}
