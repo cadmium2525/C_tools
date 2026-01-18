@@ -236,7 +236,7 @@ class Game {
         // 右壁
         this.rightWall = Bodies.rectangle(this.logicalWidth + wallThickness / 2, this.logicalHeight / 2, wallThickness, this.logicalHeight, wallOptions);
 
-        this.deadLine = 150; // 少し下げる(調整)
+        this.deadLine = 70; // 判定ラインをY=70に設定
 
         World.add(this.world, [this.ground, this.leftWall, this.rightWall]);
 
@@ -442,8 +442,8 @@ class Game {
         const index = this.currentMonsterIndex;
         const monster = MONSTERS[index];
 
-        // 落下位置の調整 (deadLineより少し下から落とすと安全)
-        const spawnY = this.deadLine;
+        // 落下位置の調整 (判定ラインとは独立して上部50px固定)
+        const spawnY = 50;
 
         const body = Bodies.circle(x, spawnY, monster.size, {
             restitution: 0.3,
