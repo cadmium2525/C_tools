@@ -34,7 +34,10 @@ body {
     max-height: 900px;
     display: flex;
     flex-direction: column;
-    padding: 10px;
+    padding: 2px;
+    align-items: center;
+    /* justify-content: center; を削除し、margin: auto で中央配置を試みる */
+    margin: auto;
 }
 
 header {
@@ -42,8 +45,11 @@ header {
     grid-template-columns: 1fr 1fr 1fr auto;
     gap: 10px;
     height: 80px;
+    width: 100%;
     margin-bottom: 10px;
     align-items: center;
+    flex-shrink: 0;
+    /* ヘッダーが縮まないように */
 }
 
 #score-container,
@@ -122,16 +128,21 @@ header {
     transform: rotate(45deg);
 }
 
+/* 
+   重要な変更点: 
+   game-canvas-wrapperはJSで固定サイズの390x700に設定され、
+   transformでスケーリングされるため、CSSではwidth/heightを固定しないが、
+   レイアウト用の親コンテナとして機能する。
+*/
 #game-canvas-wrapper {
     position: relative;
-    flex: 1;
     background: linear-gradient(to bottom, rgba(15, 23, 42, 0.5), rgba(15, 23, 42, 0.8));
     border: 2px solid var(--glass-border);
     border-radius: 16px;
-    width: 100%;
     overflow: hidden;
     box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
     display: flex;
+    flex-shrink: 0;
 }
 
 #game-canvas-wrapper canvas {
@@ -198,6 +209,22 @@ header {
     align-items: center;
 }
 
+/* Flash Effect for Hinotori Merge */
+#flash-effect {
+    position: absolute;
+    inset: 0;
+    background-color: white;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 50;
+    transition: opacity 0.1s ease-out;
+}
+
+#flash-effect.active {
+    opacity: 1;
+    transition: opacity 0.05s ease-in;
+}
+
 #evolution-chart {
     margin-top: 15px;
     background: var(--card-bg);
@@ -208,6 +235,8 @@ header {
     overflow-x: auto;
     white-space: nowrap;
     -webkit-overflow-scrolling: touch;
+    width: 100%;
+    flex-shrink: 0;
 }
 
 #evolution-chart::-webkit-scrollbar {

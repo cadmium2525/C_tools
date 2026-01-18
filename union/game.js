@@ -37,6 +37,32 @@ class AudioManager {
         setTimeout(() => this.playTone(100, 0.5, 'sawtooth'), 400);
     }
 
+    playFlashSound() {
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        // 派手な音にするためsawtoothを使用
+        osc.type = 'sawtooth';
+
+        const now = this.ctx.currentTime;
+        const duration = 1.5;
+
+        // 周波数: 高音から低音へグリスダウン ("プチューーーン")
+        osc.frequency.setValueAtTime(1500, now);
+        osc.frequency.exponentialRampToValueAtTime(50, now + duration);
+
+        // 音量: フェードアウト
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start();
+        osc.stop(now + duration);
+    }
+
     playTone(freq, duration, type = 'sine') {
         if (this.ctx.state === 'suspended') this.ctx.resume();
         const osc = this.ctx.createOscillator();
@@ -71,8 +97,10 @@ class AudioManager {
 class Game {
     constructor() {
         this.container = document.getElementById('game-canvas-wrapper');
-        this.width = this.container.clientWidth;
-        this.height = this.container.clientHeight;
+        // 固定の論理サイズ (User request: 400x700)
+        this.logicalWidth = 400;
+        this.logicalHeight = 700;
+        this.scale = 1;
 
         this.score = 0;
         this.bestScore = parseInt(localStorage.getItem('monster_suika_best')) || 0;
@@ -100,20 +128,40 @@ class Game {
     }
 
     onResize() {
-        this.width = this.container.clientWidth;
-        this.height = this.container.clientHeight;
+        const parent = this.container.parentElement; // #game-container
+        const windowWidth = window.innerWidth;
+        const windowHeight = window.innerHeight;
 
-        // レンダリングサイズの更新
-        this.render.canvas.width = this.width;
-        this.render.canvas.height = this.height;
-        this.render.options.width = this.width;
-        this.render.options.height = this.height;
+        // 利用可能な最大幅（左右のパディング考慮 - ほぼゼロに）
+        const paddingX = 0;
+        const availWidth = Math.min(parent.clientWidth, windowWidth) - paddingX;
 
-        // 壁の再配置
-        const wallThickness = 50;
-        Body.setPosition(this.ground, { x: this.width / 2, y: this.height + wallThickness / 2 });
-        Body.setPosition(this.leftWall, { x: -wallThickness / 2, y: this.height / 2 });
-        Body.setPosition(this.rightWall, { x: this.width + wallThickness / 2, y: this.height / 2 });
+        // 利用可能な最大高さ (ヘッダー80, フッター周り含めかなりタイトに)
+        // uiHeightを少し削減して攻める
+        const uiHeight = 80 + 10 + 80 + 10;
+
+        // 安全マージンを最小限に
+        const availHeight = windowHeight - uiHeight;
+
+        // 縦横比を維持して最大スケールを計算
+        const scaleW = availWidth / this.logicalWidth;
+        const scaleH = Math.max(0.1, availHeight / this.logicalHeight);
+
+        this.scale = Math.min(scaleW, scaleH);
+
+        // 論理サイズではなく、計算した表示サイズをコンテナに適用
+        // これによりレイアウト上のサイズも縮小され、隙間がなくなる
+        const displayWidth = Math.floor(this.logicalWidth * this.scale);
+        const displayHeight = Math.floor(this.logicalHeight * this.scale);
+
+        this.container.style.width = `${displayWidth}px`;
+        this.container.style.height = `${displayHeight}px`;
+        this.container.style.transform = ''; // transformは解除
+
+        // プレビューのサイズ・位置も更新が必要なので呼び出す
+        if (this.currentMonsterIndex !== undefined) {
+            this.updatePreview();
+        }
     }
 
     getRandomMonsterIndex() {
@@ -128,8 +176,8 @@ class Game {
             element: this.container,
             engine: this.engine,
             options: {
-                width: this.width,
-                height: this.height,
+                width: this.logicalWidth,
+                height: this.logicalHeight,
                 wireframes: false,
                 background: 'transparent'
             }
@@ -181,14 +229,14 @@ class Game {
             restitution: 0.3
         };
 
-        // 底面（コンテナの高さちょうどに配置。厚みの半分を外側へシフト）
-        this.ground = Bodies.rectangle(this.width / 2, this.height + wallThickness / 2, this.width, wallThickness, wallOptions);
-        // 左壁（x=0に配置。厚みの半分を外側へシフト）
-        this.leftWall = Bodies.rectangle(-wallThickness / 2, this.height / 2, wallThickness, this.height, wallOptions);
-        // 右壁（x=widthに配置。厚みの半分を外側へシフト）
-        this.rightWall = Bodies.rectangle(this.width + wallThickness / 2, this.height / 2, wallThickness, this.height, wallOptions);
+        // 底面
+        this.ground = Bodies.rectangle(this.logicalWidth / 2, this.logicalHeight + wallThickness / 2, this.logicalWidth, wallThickness, wallOptions);
+        // 左壁
+        this.leftWall = Bodies.rectangle(-wallThickness / 2, this.logicalHeight / 2, wallThickness, this.logicalHeight, wallOptions);
+        // 右壁
+        this.rightWall = Bodies.rectangle(this.logicalWidth + wallThickness / 2, this.logicalHeight / 2, wallThickness, this.logicalHeight, wallOptions);
 
-        this.deadLine = 50;
+        this.deadLine = 150; // 少し下げる(調整)
 
         World.add(this.world, [this.ground, this.leftWall, this.rightWall]);
 
@@ -238,9 +286,18 @@ class Game {
     updatePreview() {
         const preview = document.getElementById('current-monster-preview');
         const monster = MONSTERS[this.currentMonsterIndex];
-        preview.innerHTML = `<img src="${monster.img}" style="width: ${monster.size * 2}px; height: ${monster.size * 2}px;">`;
-        preview.style.width = `${monster.size * 2}px`;
-        preview.style.height = `${monster.size * 2}px`;
+
+        // スケールを適用した表示サイズ
+        const displaySize = monster.size * 2 * this.scale;
+
+        // box-sizing: content-boxにして、border分を含まずにimage領域を確保する
+        // これによりcanvasの描画サイズ(radius*2)とimgのサイズが一致する
+        preview.style.boxSizing = 'content-box';
+
+        // imgに display: block を指定してベースラインのズレを防ぐ
+        preview.innerHTML = `<img src="${monster.img}" style="width: 100%; height: 100%; display: block; object-fit: fill;">`;
+        preview.style.width = `${displaySize}px`;
+        preview.style.height = `${displaySize}px`;
         preview.style.display = 'block';
     }
 
@@ -248,6 +305,15 @@ class Game {
         const wrapper = this.container;
         const preview = document.getElementById('current-monster-preview');
         const guide = document.getElementById('guide-line');
+
+        // 座標変換ヘルパー
+        const getLogicalX = (clientX) => {
+            const rect = wrapper.getBoundingClientRect();
+            // クライアント座標からコンテナ左端を引く
+            const relativeX = clientX - rect.left;
+            // スケールで割って論理座標に戻す
+            return relativeX / this.scale;
+        };
 
         const moveHandler = (e) => {
             if (!this.hasStarted) {
@@ -263,23 +329,23 @@ class Game {
                 clientX = e.clientX;
             }
 
-            const rect = wrapper.getBoundingClientRect();
-            let x = clientX - rect.left;
+            let x = getLogicalX(clientX);
 
             const monster = MONSTERS[this.currentMonsterIndex];
             const minX = monster.size;
-            const maxX = this.width - monster.size;
+            const maxX = this.logicalWidth - monster.size;
+            // クランプ
             x = Math.max(minX, Math.min(x, maxX));
 
-            preview.style.left = `${x}px`;
-            guide.style.left = `${x}px`;
+            // 表示位置はスケール済み座標を使う
+            preview.style.left = `${x * this.scale}px`;
+            guide.style.left = `${x * this.scale}px`;
             guide.style.display = 'block';
         };
 
         const releaseHandler = (e) => {
             if (this.gameOver || this.isDropping) return;
 
-            const rect = wrapper.getBoundingClientRect();
             let clientX;
             if (e.changedTouches) {
                 clientX = e.changedTouches[0].clientX;
@@ -287,25 +353,27 @@ class Game {
                 clientX = e.clientX;
             }
 
-            let x = clientX - rect.left;
+            let x = getLogicalX(clientX);
+
             const monster = MONSTERS[this.currentMonsterIndex];
-            x = Math.max(monster.size, Math.min(x, this.width - monster.size));
+            // クランプ
+            x = Math.max(monster.size, Math.min(x, this.logicalWidth - monster.size));
 
             this.dropMonster(x);
         };
 
         wrapper.addEventListener('mousemove', moveHandler);
         wrapper.addEventListener('touchstart', (e) => {
-            e.preventDefault();
+            if (e.cancelable) e.preventDefault();
             moveHandler(e);
         }, { passive: false });
         wrapper.addEventListener('touchmove', (e) => {
-            e.preventDefault();
+            if (e.cancelable) e.preventDefault();
             moveHandler(e);
         }, { passive: false });
         wrapper.addEventListener('mouseup', releaseHandler);
         wrapper.addEventListener('touchend', (e) => {
-            e.preventDefault();
+            if (e.cancelable) e.preventDefault();
             releaseHandler(e);
         }, { passive: false });
 
@@ -374,7 +442,10 @@ class Game {
         const index = this.currentMonsterIndex;
         const monster = MONSTERS[index];
 
-        const body = Bodies.circle(x, this.deadLine - 50, monster.size, {
+        // 落下位置の調整 (deadLineより少し下から落とすと安全)
+        const spawnY = this.deadLine;
+
+        const body = Bodies.circle(x, spawnY, monster.size, {
             restitution: 0.3,
             friction: 0.1,
             label: monster.name,
@@ -412,14 +483,20 @@ class Game {
         if (bodyA.isStatic || bodyB.isStatic) return;
 
         const index = bodyA.monsterIndex;
-        this.audio.playMerge();
 
+        // 最大レベル同士の合体 (ヒノトリ同士)
         if (index >= MONSTERS.length - 1) {
+            this.audio.playFlashSound();
+            // 特殊演出
+            this.triggerFlashEffect();
+
             World.remove(this.world, [bodyA, bodyB]);
             this.score += MONSTERS[index].score * 2;
             this.updateScoreUI();
             return;
         }
+
+        this.audio.playMerge();
 
         const newX = (bodyA.position.x + bodyB.position.x) / 2;
         const newY = (bodyA.position.y + bodyB.position.y) / 2;
@@ -452,6 +529,16 @@ class Game {
 
         newBody.monsterIndex = nextIndex;
         World.add(this.world, newBody);
+    }
+
+    triggerFlashEffect() {
+        const flash = document.getElementById('flash-effect');
+        if (flash) {
+            flash.classList.add('active');
+            setTimeout(() => {
+                flash.classList.remove('active');
+            }, 150); // 短いフラッシュ
+        }
     }
 
     triggerGameOver() {
