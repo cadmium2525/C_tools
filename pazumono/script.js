@@ -339,24 +339,31 @@ class Board {
                 const targetR = parseInt(target.dataset.r);
                 const targetC = parseInt(target.dataset.c);
 
-                // 最初の移動でタイマー開始
-                if (!this.isTimerStarted) {
-                    this.isTimerStarted = true;
-                    this.dragStartTime = Date.now();
-                    this.timerId = setInterval(() => {
-                        const elapsed = Date.now() - this.dragStartTime;
-                        const ratio = Math.max(0, 1 - elapsed / CONFIG.moveTime);
-                        this.timerBar.style.transform = `scaleX(${ratio})`;
+                // 隣接セル（斜め含む）のみスワップを許可
+                const distR = Math.abs(targetR - this.gridPos.r);
+                const distC = Math.abs(targetC - this.gridPos.c);
 
-                        if (elapsed > CONFIG.moveTime) {
-                            handleEnd();
-                        }
-                    }, 50);
+                if (distR <= 1 && distC <= 1) {
+                    // 最初の移動でタイマー開始
+                    if (!this.isTimerStarted) {
+                        this.isTimerStarted = true;
+                        this.dragStartTime = Date.now();
+                        this.timerId = setInterval(() => {
+                            const elapsed = Date.now() - this.dragStartTime;
+                            const currentMoveTime = this.moveTimeBonus > 0 ? CONFIG.moveTime * 2 : CONFIG.moveTime;
+                            const ratio = Math.max(0, 1 - elapsed / currentMoveTime);
+                            this.timerBar.style.transform = `scaleX(${ratio})`;
+
+                            if (elapsed > currentMoveTime) {
+                                handleEnd();
+                            }
+                        }, 50);
+                    }
+
+                    this.swapOrbs(this.gridPos.r, this.gridPos.c, targetR, targetC);
+                    this.gridPos = { r: targetR, c: targetC };
+                    this.game.audio.playSwapSE();
                 }
-
-                this.swapOrbs(this.gridPos.r, this.gridPos.c, targetR, targetC);
-                this.gridPos = { r: targetR, c: targetC };
-                this.game.audio.playSwapSE();
             }
         };
 
