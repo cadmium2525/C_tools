@@ -84,36 +84,55 @@ class AudioController {
         osc.stop(this.ctx.currentTime + duration);
     }
 
-    startBGM() {
+    startBGM(type = 'battle') {
         if (!this.ctx || this.isMuted || this.isBGMMuted) return;
         this.stopBGM();
 
-        // Simple loop: Bassline
-        const bassNotes = [110, 110, 146.83, 146.83, 164.81, 164.81, 146.83, 110]; // A2, D3, E3, D3 sequence
+        // 曲調の設定
+        const isBattle = type === 'battle';
+        const tempo = isBattle ? 0.15 : 0.4; // 戦闘は速く
+
+        // メロディ定義
+        const peaceSequence = [110, 110, 146.83, 146.83, 164.81, 164.81, 146.83, 110]; // 以前のベースライン
+        const battleSequence = [55, 55, 55, 82.41, 55, 55, 73.42, 65.41]; // 低いAから始まる激しいライン
+        const melodySequence = isBattle ? [220, 246.94, 261.63, 293.66, 329.63, 349.23, 392, 440] : [];
+
         let noteIndex = 0;
-        const tempo = 0.4; // seconds per note
 
         const playNextNote = () => {
-            if (!this.isInitialized) return; // check again
+            if (!this.isInitialized || this.isBGMMuted) return;
 
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
+            const now = this.ctx.currentTime;
 
-            osc.frequency.setValueAtTime(bassNotes[noteIndex], this.ctx.currentTime);
-            osc.type = 'triangle';
+            // ベース音
+            const bassOsc = this.ctx.createOscillator();
+            const bassGain = this.ctx.createGain();
+            bassOsc.type = isBattle ? 'sawtooth' : 'triangle';
+            bassOsc.frequency.setValueAtTime(isBattle ? battleSequence[noteIndex % 8] : peaceSequence[noteIndex % 8], now);
+            bassGain.gain.setValueAtTime(isBattle ? 0.04 : 0.05, now);
+            bassGain.gain.linearRampToValueAtTime(0, now + tempo);
+            bassOsc.connect(bassGain);
+            bassGain.connect(this.ctx.destination);
+            bassOsc.start();
+            bassOsc.stop(now + tempo);
+            this.bgmOscillators.push(bassOsc);
 
-            gain.gain.setValueAtTime(0.05, this.ctx.currentTime);
-            gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + tempo);
+            // 戦闘時のみ速いメロディを追加
+            if (isBattle && noteIndex % 2 === 0) {
+                const melOsc = this.ctx.createOscillator();
+                const melGain = this.ctx.createGain();
+                melOsc.type = 'square';
+                melOsc.frequency.setValueAtTime(melodySequence[Math.floor(noteIndex / 2) % 8], now);
+                melGain.gain.setValueAtTime(0.02, now);
+                melGain.gain.linearRampToValueAtTime(0, now + tempo * 2);
+                melOsc.connect(melGain);
+                melGain.connect(this.ctx.destination);
+                melOsc.start();
+                melOsc.stop(now + tempo * 2);
+                this.bgmOscillators.push(melOsc);
+            }
 
-            osc.connect(gain);
-            gain.connect(this.ctx.destination);
-
-            osc.start();
-            osc.stop(this.ctx.currentTime + tempo);
-
-            this.bgmOscillators.push(osc);
-
-            noteIndex = (noteIndex + 1) % bassNotes.length;
+            noteIndex++;
             this.bgmTimer = setTimeout(playNextNote, tempo * 1000);
         };
 

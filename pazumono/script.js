@@ -8,11 +8,50 @@ const CONFIG = {
     rows: 5,
     orbTypes: 7, // 0:Red, 1:Green, 2:Yellow, 3:Blue, 4:White, 5:Black, 6:Heart
     moveTime: 6000, // 6 seconds
-    aoeThreshold: 5 // 5+ match
+    aoeThreshold: 5, // 5+ match
+    shopInterval: 5  // 5 floors
 };
 
 const ELEMENTS = {
     RED: 0, GREEN: 1, YELLOW: 2, BLUE: 3, WHITE: 4, BLACK: 5, HEART: 6
+};
+
+const ITEMS = {
+    'hourglass': { name: '砂時計', price: 3000, desc: '3ターンの間操作時間が2倍になる' },
+    'oil': { name: 'オイリーオイル', price: 4000, desc: 'ライフを50％回復する' },
+    'red_crystal': { name: '赤の水晶', price: 500, desc: '赤オーラのモンスターのガッツを20回復する', element: ELEMENTS.RED },
+    'green_crystal': { name: '緑の水晶', price: 500, desc: '緑オーラのモンスターのガッツを20回復する', element: ELEMENTS.GREEN },
+    'yellow_crystal': { name: '黄の水晶', price: 500, desc: '黄オーラのモンスターのガッツを20回復する', element: ELEMENTS.YELLOW },
+    'blue_crystal': { name: '青の水晶', price: 500, desc: '青オーラのモンスターのガッツを20回復する', element: ELEMENTS.BLUE },
+    'white_crystal': { name: '白の水晶', price: 500, desc: '白オーラのモンスターのガッツを20回復する', element: ELEMENTS.WHITE },
+    'black_crystal': { name: '黒の水晶', price: 500, desc: '黒オーラのモンスターのガッツを20回復する', element: ELEMENTS.BLACK }
+};
+
+const MONSTER_SKILLS = {
+    'ヒノトリ': [
+        { name: 'フレイムライン', cost: 30, type: 'damage', val: 500, desc: '敵単体に火炎で500ダメージ' },
+        { name: 'プロミネンス', cost: 60, type: 'damage_spawn', val: 800, spawnColor: ELEMENTS.RED, spawnCount: 5, desc: '敵単体に800ダメージを与え、火ディスクを5個生成する' }
+    ],
+    'モノリス': [
+        { name: 'ウォール', cost: 40, type: 'delay', delay: 1, desc: '敵の攻撃を1ターン遅らせる' },
+        { name: 'グラビティ', cost: 80, type: 'convert', color: ELEMENTS.BLACK, desc: '全ディスクを黒ディスクに変換する' }
+    ],
+    'プラント': [
+        { name: 'シードショット', cost: 25, type: 'damage', val: 300, desc: '敵単体に300ダメージ' },
+        { name: 'メガフロール', cost: 50, type: 'convert', color: ELEMENTS.GREEN, desc: '全ディスクを緑ディスクに変換する' }
+    ],
+    'ウンディーネ': [
+        { name: 'アクアヒール', cost: 30, type: 'spawn', spawnColor: ELEMENTS.HEART, spawnCount: 6, desc: '回復ディスクを6個生成する' },
+        { name: 'タイダルウェーブ', cost: 70, type: 'convert', color: ELEMENTS.BLUE, desc: '全ディスクを青ディスクに変換する' }
+    ],
+    'スエゾー': [
+        { name: 'にらみつける', cost: 35, type: 'delay', delay: 1, desc: '敵の攻撃を1ターン遅らせる' },
+        { name: 'サイコキネシス', cost: 60, type: 'variable_damage', val: 100, desc: '盤面の色の種類が多いほど大ダメージ' }
+    ],
+    'ガリ': [
+        { name: 'ゴッドハンド', cost: 45, type: 'damage', val: 600, desc: '敵単体に強力な光の拳を叩き込む' },
+        { name: '神の裁き', cost: 90, type: 'damage_spawn', val: 1000, spawnColor: ELEMENTS.WHITE, spawnCount: 8, desc: '敵に1000ダメージを与え、白ディスクを8個生成' }
+    ]
 };
 
 const IMAGE_PATH = 'images/';
@@ -24,14 +63,14 @@ const SKILLS = {
 
     // Hinotori (Red)
     'flame_line': { name: 'フレイムライン', desc: '敵単体に中ダメージ', cost: 25, type: 'damage', val: 100 },
-    'fire_wave': { name: 'ファイアウェーブ', desc: '全ドロップを火属性に変換', cost: 43, type: 'convert', color: ELEMENTS.RED },
+    'fire_wave': { name: 'ファイアウェーブ', desc: '全ディスクを火属性に変換', cost: 43, type: 'convert', color: ELEMENTS.RED },
 
     // Plant (Green)
     'mitsu': { name: 'ミツ', desc: '全敵の行動を3ターン遅らせる', cost: 26, type: 'delay', delay: 3 },
-    'flower_beam': { name: 'フラワービーム', desc: '大ダメージ＋木ドロップを生成', cost: 42, type: 'damage_spawn', val: 200, spawnColor: ELEMENTS.GREEN, spawnCount: 6 },
+    'flower_beam': { name: 'フラワービーム', desc: '大ダメージ＋木ディスクを生成', cost: 42, type: 'damage_spawn', val: 200, spawnColor: ELEMENTS.GREEN, spawnCount: 6 },
 
     // Undine (Blue)
-    'aqua_wave': { name: 'アクアウェイブ', desc: '水ドロップを6個生成', cost: 19, type: 'spawn', spawnColor: ELEMENTS.BLUE, spawnCount: 6 },
+    'aqua_wave': { name: 'アクアウェイブ', desc: '水ディスクを6個生成', cost: 19, type: 'spawn', spawnColor: ELEMENTS.BLUE, spawnCount: 6 },
     'crystal_arrow': { name: 'クリスタルアロー', desc: '敵単体に大ダメージ', cost: 37, type: 'damage', val: 200 },
 
     // Suezo (Yellow)
@@ -44,12 +83,12 @@ const SKILLS = {
 };
 
 const ALLY_DATA = [
-    { name: 'モノリス', img: 'モノリス.png', baseHp: 400, atk: 70, element: ELEMENTS.BLACK, skills: ['dai_taorekomi', 'aurora_gate'] },
-    { name: 'ヒノトリ', img: 'ヒノトリ.png', baseHp: 300, atk: 90, element: ELEMENTS.RED, skills: ['flame_line', 'fire_wave'] },
-    { name: 'プラント', img: 'プラント.png', baseHp: 350, atk: 60, element: ELEMENTS.GREEN, skills: ['mitsu', 'flower_beam'] },
-    { name: 'ウンディーネ', img: 'ウンディーネ.png', baseHp: 250, atk: 80, element: ELEMENTS.BLUE, skills: ['aqua_wave', 'crystal_arrow'] },
-    { name: 'スエゾー', img: 'スエゾー.png', baseHp: 280, atk: 75, element: ELEMENTS.YELLOW, skills: ['nameru', 'berobinta'] },
-    { name: 'ガリ', img: 'ガリ.png', baseHp: 320, atk: 85, element: ELEMENTS.WHITE, skills: ['knuckle', 'god_rising'] }
+    { name: 'モノリス', img: 'モノリス.png', baseHp: 400, atk: 70, element: ELEMENTS.BLACK },
+    { name: 'ヒノトリ', img: 'ヒノトリ.png', baseHp: 300, atk: 90, element: ELEMENTS.RED },
+    { name: 'プラント', img: 'プラント.png', baseHp: 350, atk: 60, element: ELEMENTS.GREEN },
+    { name: 'ウンディーネ', img: 'ウンディーネ.png', baseHp: 250, atk: 80, element: ELEMENTS.BLUE },
+    { name: 'スエゾー', img: 'スエゾー.png', baseHp: 280, atk: 75, element: ELEMENTS.YELLOW },
+    { name: 'ガリ', img: 'ガリ.png', baseHp: 320, atk: 85, element: ELEMENTS.WHITE }
 ];
 
 const ENEMY_IMAGES = [
@@ -59,6 +98,10 @@ const ENEMY_IMAGES = [
     'ディノ.png', 'デュラハン.png', 'ドラゴン.png', 'ナーガ.png', 'ニャー.png',
     'ネンドロ.png', 'ハム.png', 'ヒノトリ.png', 'プラント.png', 'ヘンガー.png',
     'メタルナー.png', 'モノリス.png', 'ユグドラシル.png', 'ワーム.png'
+];
+
+const BACKGROUND_IMAGES = [
+    'bg_coast.png', 'bg_forest.png', 'bg_desert.png', 'bg_volcano.png', 'bg_snow.png'
 ];
 
 // モンスターのオーラ定義
@@ -106,13 +149,62 @@ class Monster {
         this.currentTimer = this.turnTimer;
 
         // Skills & Guts (Ally)
-        this.skills = data.skills || [];
         this.guts = 0;
         this.maxGuts = 99;
+
+        // Status Effects
+        this.status = null; // '根性', '憤怒', '逆上', '底力', '余裕', '必死'
+        this.statusTurns = 0;
+        this.atkMultiplier = 1.0;
+        this.gutsMultiplier = 1.0;
+        this.costMultiplier = 1.0;
+        this.critMultiplier = 1.0;
+        this.extraAtk = 0; // 憤怒用
+
+        this.statusEl = null;
+
+        // Skill costs & multipliers (per monster)
+        this.baseCostMultiplier = 1.0;
+        this.critChanceMultiplier = 1.0;
+    }
+
+    addStatus(name, turns) {
+        this.status = name;
+        this.statusTurns = turns;
+        this.updateStatusEffects();
+    }
+
+    updateStatusEffects() {
+        if (!this.el) return;
+        if (this.statusEl) this.statusEl.remove();
+        if (this.status) {
+            this.statusEl = document.createElement('div');
+            this.statusEl.className = 'status-effect';
+            this.statusEl.textContent = this.status;
+            this.el.appendChild(this.statusEl);
+
+            // Apply immediate effects
+            switch (this.status) {
+                case '憤怒': this.extraAtk = this.atk * 0.5; break;
+                case '逆上': this.atkMultiplier = 1.5; this.costMultiplier = 1.5; break;
+                case '余裕': this.gutsMultiplier = 1.5; this.costMultiplier = 0.5; break;
+                case '必死': this.critChanceMultiplier = 0.8; break; // Crit chance handled in dealDamage
+                case '底力': this.atkMultiplier = 1.0; break; // Handled in playerAttack based on HP
+                case '根性': break; // Handled in enemyTurn
+            }
+        } else {
+            // Reset effects if status is removed
+            this.atkMultiplier = 1.0;
+            this.gutsMultiplier = 1.0;
+            this.costMultiplier = 1.0;
+            this.critChanceMultiplier = 1.0;
+            this.extraAtk = 0;
+        }
     }
 
     addGuts(amount) {
-        this.guts = Math.min(this.maxGuts, this.guts + amount);
+        const finalAmount = Math.floor(amount * this.gutsMultiplier);
+        this.guts = Math.min(this.maxGuts, this.guts + finalAmount);
     }
 
     takeDamage(amount) {
@@ -565,6 +657,8 @@ class Game {
         this.enemies = [];
         this.playerHp = 0;
         this.playerMaxHp = 0;
+        this.currentTarget = null;
+        this.comboHistory = 0; // 5コンボ以上の連続達成数
 
         // UI Refs
         this.floorEl = document.getElementById('floor-display');
@@ -575,10 +669,52 @@ class Game {
         this.hpText = document.getElementById('hp-text');
         this.comboDisplay = document.getElementById('combo-display');
         this.modal = document.getElementById('modal-overlay');
+        this.helpModal = document.getElementById('help-overlay');
+        this.helpBtn = document.getElementById('help-btn');
 
+        // Shop & Bag Elements
+        this.shopOverlay = document.getElementById('shop-overlay');
+        this.bagOverlay = document.getElementById('bag-overlay');
+        this.shopItemsEl = document.getElementById('shop-items');
+        this.bagItemsEl = document.getElementById('bag-items');
+        this.inventory = {}; // { itemId: count }
+        this.board.moveTimeBonus = 0;
+
+        this.initHighScore();
         this.initParty();
         this.setupStart();
         this.setupBGM();
+        this.setupHelp();
+        this.setupItemBag();
+    }
+
+    getMonsterStatusName(name) {
+        switch (name) {
+            case 'モノリス': return '根性';
+            case 'ヒノトリ': return '憤怒';
+            case 'プラント': return '必死';
+            case 'ウンディーネ': return '余裕';
+            case 'スエゾー': return '逆上';
+            case 'ガリ': return '底力';
+            default: return 'なし';
+        }
+    }
+
+    initHighScore() {
+        this.bestScore = parseInt(localStorage.getItem('pazumono_best_score')) || 0;
+        const bestScoreDisplay = document.getElementById('best-score-display');
+        const bestScoreVal = document.getElementById('best-score-val');
+        if (bestScoreDisplay && this.bestScore > 0) {
+            bestScoreDisplay.classList.remove('hidden');
+            bestScoreVal.textContent = this.bestScore;
+        }
+    }
+
+    saveHighScore() {
+        if (this.score > this.bestScore) {
+            this.bestScore = this.score;
+            localStorage.setItem('pazumono_best_score', this.bestScore);
+        }
     }
 
     setupBGM() {
@@ -660,14 +796,15 @@ class Game {
         title.textContent = monster.name + ' Skill';
         skillModal.appendChild(title);
 
-        monster.skills.forEach(skillKey => {
-            const skill = SKILLS[skillKey];
+        const monsterSkills = MONSTER_SKILLS[monster.name] || [];
+        monsterSkills.forEach(skill => {
             const skillContainer = document.createElement('div');
             skillContainer.className = 'skill-item';
 
             const btn = document.createElement('button');
-            const canUse = monster.guts >= skill.cost;
-            btn.textContent = `${skill.name} (Guts: ${skill.cost})`;
+            const cost = Math.floor(skill.cost * monster.costMultiplier);
+            const canUse = monster.guts >= cost;
+            btn.textContent = `${skill.name} (Guts: ${cost})`;
             btn.className = 'skill-btn';
             if (!canUse) btn.classList.add('disabled');
             btn.disabled = !canUse;
@@ -679,7 +816,7 @@ class Game {
             btn.onclick = () => {
                 // Ensure modal closes and no re-clicks
                 skillModal.remove();
-                this.executeSkill(monster, skill);
+                this.executeSkill(monster, skill, cost);
             };
 
             skillContainer.appendChild(btn);
@@ -693,15 +830,38 @@ class Game {
         closeBtn.onclick = () => skillModal.remove();
         skillModal.appendChild(closeBtn);
 
+        // 固有の状態変化名をタイトルに追加
+        const statusName = this.getMonsterStatusName(monster.name);
+        title.textContent = `${monster.name} Skill [${statusName}]`;
+
         document.body.appendChild(skillModal);
+
+        // 勇者スキルの表示 (モノリスのみ)
+        if (monster.name === 'モノリス') {
+            const heroInfo = document.createElement('div');
+            heroInfo.className = 'hero-skill-info';
+
+            const heroTitle = document.createElement('div');
+            heroTitle.className = 'hero-skill-title';
+            heroTitle.textContent = '★ 勇者スキル ★';
+
+            const heroDesc = document.createElement('div');
+            heroDesc.className = 'skill-desc';
+            heroDesc.style.color = '#fff';
+            heroDesc.textContent = '黒ディスクを5つ繋げて消すと全員の攻撃力が3倍、6個以上で5倍！';
+
+            heroInfo.appendChild(heroTitle);
+            heroInfo.appendChild(heroDesc);
+            skillModal.insertBefore(heroInfo, closeBtn);
+        }
     }
 
-    async executeSkill(monster, skill) {
+    async executeSkill(monster, skill, cost) {
         if (this.isProcessing) return;
-        if (monster.guts < skill.cost) return;
+        if (monster.guts < cost) return;
 
         this.isProcessing = true;
-        monster.guts -= skill.cost;
+        monster.guts -= cost;
         this.updateGutsUI();
 
         // Skill Feedback
@@ -714,13 +874,13 @@ class Game {
         // Apply Effect
         switch (skill.type) {
             case 'damage':
-                this.dealDamageToRandomEnemy(skill.val, monster.element);
+                this.dealSkillDamage(skill.val, monster, 'single');
                 break;
             case 'variable_damage':
                 const boardColors = new Set();
                 this.board.grid.forEach(row => row.forEach(cell => boardColors.add(cell.type)));
                 const diversity = boardColors.size;
-                this.dealDamageToRandomEnemy(skill.val * diversity, monster.element);
+                this.dealSkillDamage(skill.val * diversity, monster, 'single');
                 break;
             case 'convert':
                 this.board.convertAllOrbs(skill.color);
@@ -729,12 +889,12 @@ class Game {
                 this.board.spawnOrbs(skill.spawnColor, skill.spawnCount);
                 break;
             case 'damage_spawn':
-                this.dealDamageToRandomEnemy(skill.val, monster.element);
+                this.dealSkillDamage(skill.val, monster, 'single');
                 this.board.spawnOrbs(skill.spawnColor, skill.spawnCount);
                 break;
             case 'delay':
             case 'damage_delay':
-                if (skill.val) this.dealDamageToRandomEnemy(skill.val, monster.element);
+                if (skill.val) this.dealSkillDamage(skill.val, monster, skill.type);
                 const delay = skill.delay || 1;
                 this.enemies.forEach(e => {
                     e.currentTimer += delay;
@@ -757,7 +917,7 @@ class Game {
                 // スキル生成ドロップ分を除いたカウントでガッツ加算
                 const naturalCount = counts[m.element];
                 if (naturalCount > 0) {
-                    const amount = Math.floor(naturalCount * 1.5);
+                    const amount = Math.floor(naturalCount * 2); // 1個につき2ガッツ
                     m.addGuts(amount);
                 }
             }
@@ -779,14 +939,45 @@ class Game {
         });
     }
 
+    setupHelp() {
+        if (!this.helpBtn || !this.helpModal) return;
+        this.helpBtn.addEventListener('click', () => {
+            this.helpModal.classList.remove('hidden');
+        });
+        const closeBtn = document.getElementById('close-help-btn');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                this.helpModal.classList.add('hidden');
+            });
+        }
+    }
+
     startLevel() {
         this.floor++;
         this.floorEl.textContent = this.floor;
+        this.scoreEl.textContent = this.score;
+
+        // 5階層クリアごとに商人を出現させる (例: 6, 11, 16...)
+        if (this.floor > 1 && (this.floor - 1) % CONFIG.shopInterval === 0) {
+            this.showShop();
+            return;
+        }
+
+        if (this.floor % 5 === 1) {
+            this.changeBackground();
+        }
         this.spawnEnemies();
+    }
+
+    changeBackground() {
+        const bg = BACKGROUND_IMAGES[Math.floor(Math.random() * BACKGROUND_IMAGES.length)];
+        const battleArea = document.getElementById('battle-area');
+        battleArea.style.backgroundImage = `url('images/${bg}')`;
     }
 
     spawnEnemies() {
         this.enemies = [];
+        this.currentTarget = null;
         this.enemyContainer.innerHTML = '';
         const count = Math.floor(Math.random() * 3) + 1; // 1-3 enemies
 
@@ -816,18 +1007,31 @@ class Game {
 
             div.innerHTML = `
                 <div class="enemy-hp-bar"><div class="enemy-hp-fill" style="width: 100%"></div></div>
-                <div class="enemy-timer" style="position:absolute; top:-20px; right:0; color:white; font-weight:bold; font-size:12px; text-shadow:1px 1px 0 #000;">あと${enemy.currentTimer}</div>
+                <div class="enemy-timer">あと${enemy.currentTimer}</div>
                 <img src="${IMAGE_PATH}${enemy.img}">
             `;
             enemy.el = div;
             enemy.hpFillEl = div.querySelector('.enemy-hp-fill');
             enemy.timerEl = div.querySelector('.enemy-timer');
+
+            div.onclick = () => {
+                if (this.currentTarget === enemy) {
+                    this.currentTarget = null;
+                    div.classList.remove('targeted');
+                } else {
+                    if (this.currentTarget) this.currentTarget.el.classList.remove('targeted');
+                    this.currentTarget = enemy;
+                    div.classList.add('targeted');
+                }
+            };
+
             this.enemyContainer.appendChild(div);
         }
     }
 
     async processTurn() {
         this.isProcessing = true;
+        this.heroMultiplier = 1.0; // 勇者スキル用倍率
 
         let comboCount = 0;
         let totalDamage = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }; // 0-5 for damage types. 6 is Heart.
@@ -851,8 +1055,14 @@ class Game {
                 const type = group.type;
                 const count = group.coords.length;
 
+                // 勇者スキル判定 (モノリス)
+                if (type === ELEMENTS.BLACK) {
+                    if (count >= 5) this.heroMultiplier = Math.max(this.heroMultiplier, 3.0);
+                    if (count >= 6) this.heroMultiplier = Math.max(this.heroMultiplier, 5.0);
+                }
+
                 if (type === ELEMENTS.HEART) {
-                    totalHeal += 100 * (count / 3); // 回復量を20から100に上方修正
+                    totalHeal += 100 * (count / 3);
                 } else if (type <= 5) { // Damage types
                     totalDamage[type] += 10 * (count / 3);
                     if (count >= CONFIG.aoeThreshold) {
@@ -874,27 +1084,47 @@ class Game {
             await new Promise(r => setTimeout(r, 400)); // Drop animation wait
         }
 
-        // コンボに応じた倍率計算 (低め: 1コンボにつき +5%)
+        // コンボに応じた倍率計算
         const comboMultiplier = 1.0 + (comboCount - 1) * 0.05;
+        let finalMultiplier = comboMultiplier;
+
+        // 7コンボボーナス (攻撃力2倍)
+        if (comboCount >= 7) {
+            finalMultiplier *= 2.0;
+        }
 
         // Apply Results
         if (comboCount > 0) {
+            // 勇者スキルメッセージ
+            if (this.heroMultiplier > 1.0) {
+                this.showDamageText(`勇者パワー x${this.heroMultiplier}!`, '#ffd700', document.getElementById('battle-area'));
+            }
+            if (comboCount >= 7) {
+                this.showDamageText(`7 COMBO BONUS x2!`, '#ff3366', document.getElementById('battle-area'));
+            }
+
             // Guts Accumulation (Per Element)
             this.addGutsToParty(erasedCounts);
 
-            // Heal (倍率適用)
+            // Heal
             if (totalHeal > 0) {
                 this.heal(Math.floor(totalHeal * comboMultiplier));
             }
 
-            // Attack (倍率適用)
-            await this.playerAttack(totalDamage, comboMultiplier, aoeFlags);
+            // Attack (勇者スキルとコンボ倍率を統合)
+            await this.playerAttack(totalDamage, finalMultiplier * this.heroMultiplier, aoeFlags);
 
             // コンボ表示を消す
             setTimeout(() => {
                 this.comboDisplay.classList.add('hidden');
             }, 1000);
+
+            // 状態変化チェック (コンボ数依存)
+            this.checkStatusByCombo(comboCount);
         }
+
+        // 状態変化ターン減少
+        this.tickStatusTurns();
 
         // Check Clear (スキルによる撃破も含めてここで統合チェック)
         await this.checkLevelClear();
@@ -903,14 +1133,27 @@ class Game {
 
     updateComboUI(count) {
         this.comboDisplay.textContent = `${count} Combo`;
-        this.comboDisplay.classList.remove('hidden', 'pop');
-        void this.comboDisplay.offsetWidth; // reflow
-        this.comboDisplay.classList.add('pop');
+
+        // アニメーションを確実に再トリガーさせるためクラスを一度削除して再適用
+        this.comboDisplay.classList.remove('hidden', 'pop', 'mega-pop');
+        void this.comboDisplay.offsetWidth; // 強制リフロ
+
+        if (count >= 7) {
+            this.comboDisplay.classList.add('mega-pop');
+        } else {
+            this.comboDisplay.classList.add('pop');
+        }
     }
 
     async checkLevelClear(isTurnEnd = true) {
         if (this.enemies.length === 0 && !this.isLevelClearing) {
             this.isLevelClearing = true;
+            // 階層クリア時に憤怒リセット
+            this.party.forEach(m => {
+                if (m.status === '憤怒') {
+                    m.extraAtk = 0;
+                }
+            });
             this.audio.playClearSE();
             await new Promise(r => setTimeout(r, 1000));
             this.startLevel();
@@ -935,22 +1178,31 @@ class Game {
                 const attackers = this.party.filter(m => m.element === el);
                 if (attackers.length === 0) continue;
 
-                const multiplier = (damageDict[el] / 10) * comboMultiplier;
+                const baseMultiplier = (damageDict[el] / 10) * comboMultiplier;
 
                 // Attack SE
                 this.audio.playAttackSE();
 
                 for (const m of attackers) {
-                    const dmg = Math.floor(m.atk * multiplier);
+                    // 状態変化による倍率適用
+                    let currentAtkMultiplier = m.atkMultiplier;
+                    if (m.status === '底力' && m.currentHp <= m.maxHp * 0.1) {
+                        currentAtkMultiplier *= 3;
+                    }
+
+                    const dmg = Math.floor((m.atk + m.extraAtk) * baseMultiplier * currentAtkMultiplier * this.heroMultiplier);
                     if (aoeFlags[el]) {
                         // AOE: Attack ALL enemies
                         for (const enemy of [...this.enemies]) {
-                            this.dealDamage(dmg, m.element, enemy);
+                            this.dealDamage(dmg, m, enemy);
                         }
                     } else {
-                        // Single: Random target
-                        const target = this.enemies[Math.floor(Math.random() * this.enemies.length)];
-                        if (target) this.dealDamage(dmg, m.element, target);
+                        // Single: Target or Random
+                        let target = this.currentTarget;
+                        if (!target || !this.enemies.includes(target)) {
+                            target = this.enemies[Math.floor(Math.random() * this.enemies.length)];
+                        }
+                        if (target) this.dealDamage(dmg, m, target);
                     }
                     await new Promise(r => setTimeout(r, 200)); // Stagger attacks
                 }
@@ -960,24 +1212,19 @@ class Game {
     }
 
     getAffinityMultiplier(atkEl, defEl) {
-        if (atkEl <= 3 && defEl <= 3) {
-            // Check Strong
-            if ((atkEl === ELEMENTS.RED && defEl === ELEMENTS.GREEN) ||
-                (atkEl === ELEMENTS.GREEN && defEl === ELEMENTS.YELLOW) ||
-                (atkEl === ELEMENTS.YELLOW && defEl === ELEMENTS.BLUE) ||
-                (atkEl === ELEMENTS.BLUE && defEl === ELEMENTS.RED)) {
-                return 1.5;
-            }
-            // Check Weak (Reverse)
-            if ((defEl === ELEMENTS.RED && atkEl === ELEMENTS.GREEN) ||
-                (defEl === ELEMENTS.GREEN && atkEl === ELEMENTS.YELLOW) ||
-                (defEl === ELEMENTS.YELLOW && atkEl === ELEMENTS.BLUE) ||
-                (defEl === ELEMENTS.BLUE && atkEl === ELEMENTS.RED)) {
-                return 0.5;
-            }
-        }
+        // 赤>緑>黄>青>赤
+        if (atkEl === ELEMENTS.RED && defEl === ELEMENTS.GREEN) return 1.5;
+        if (atkEl === ELEMENTS.GREEN && defEl === ELEMENTS.YELLOW) return 1.5;
+        if (atkEl === ELEMENTS.YELLOW && defEl === ELEMENTS.BLUE) return 1.5;
+        if (atkEl === ELEMENTS.BLUE && defEl === ELEMENTS.RED) return 1.5;
 
-        // White/Black
+        // 逆相性
+        if (defEl === ELEMENTS.RED && atkEl === ELEMENTS.GREEN) return 0.5;
+        if (defEl === ELEMENTS.GREEN && atkEl === ELEMENTS.YELLOW) return 0.5;
+        if (defEl === ELEMENTS.YELLOW && atkEl === ELEMENTS.BLUE) return 0.5;
+        if (defEl === ELEMENTS.BLUE && atkEl === ELEMENTS.RED) return 0.5;
+
+        // 白<>黒 (互いに強い)
         if ((atkEl === ELEMENTS.WHITE && defEl === ELEMENTS.BLACK) ||
             (atkEl === ELEMENTS.BLACK && defEl === ELEMENTS.WHITE)) {
             return 1.5;
@@ -986,37 +1233,55 @@ class Game {
         return 1.0;
     }
 
-    dealDamage(baseDmg, atkEl, target) {
+    dealDamage(baseDmg, attacker, target) {
         if (!target || target.currentHp <= 0) return;
 
-        const mult = this.getAffinityMultiplier(atkEl, target.element);
-        const finalDmg = Math.floor(baseDmg * mult);
-        const isCritical = mult > 1.0;
-        const color = isCritical ? 'orange' : (mult < 1.0 ? 'gray' : 'white');
-        const text = finalDmg + (isCritical ? ' (x1.5)' : '');
+        const affinityMult = this.getAffinityMultiplier(attacker.element, target.element);
 
-        const isDead = target.takeDamage(finalDmg);
-        this.showDamageText(text, color, target.el);
-
-        // Update Enemy UI
-        const pct = (target.currentHp / target.maxHp) * 100;
-        target.hpFillEl.style.width = `${pct}%`;
-
-        if (isDead) {
-            target.el.style.opacity = '0';
-            setTimeout(() => {
-                if (target.el.parentNode) target.el.parentNode.removeChild(target.el);
-            }, 500);
-            this.enemies = this.enemies.filter(e => e !== target);
-            this.score += 100 * this.floor;
-            this.scoreEl.textContent = this.score;
+        // クリティカル判定
+        let critRate = 0.2;
+        if (attacker.status === '必死' && attacker.currentHp <= attacker.maxHp * 0.4) {
+            critRate = 0.8;
         }
+        const isCritical = Math.random() < critRate;
+        const critMult = isCritical ? 1.5 : 1.0;
+
+        const finalDmg = Math.floor(baseDmg * affinityMult * critMult);
+        const color = isCritical ? '#ffcc00' : (affinityMult > 1.0 ? 'orange' : (affinityMult < 1.0 ? 'gray' : 'white'));
+        const text = finalDmg + (isCritical ? ' CRIT!' : '');
+
+        // ビーム演出
+        this.launchBeam(attacker, target, () => {
+            const isDead = target.takeDamage(finalDmg);
+            this.showDamageText(text, color, target.el);
+            this.spawnHitEffect(target.el);
+
+            // Update Enemy UI
+            const pct = (target.currentHp / target.maxHp) * 100;
+            target.hpFillEl.style.width = `${pct}%`;
+
+            if (isDead) {
+                if (this.currentTarget === target) this.currentTarget = null;
+                target.el.style.opacity = '0';
+                setTimeout(() => {
+                    if (target.el.parentNode) target.el.parentNode.removeChild(target.el);
+                }, 500);
+                this.enemies = this.enemies.filter(e => e !== target);
+                this.score += 100 * this.floor;
+                this.scoreEl.textContent = this.score;
+                this.saveHighScore();
+            }
+        });
     }
 
-    dealDamageToRandomEnemy(baseDmg, atkEl) {
+    dealSkillDamage(baseDmg, attacker, type) {
         if (this.enemies.length === 0) return;
-        const target = this.enemies[Math.floor(Math.random() * this.enemies.length)];
-        this.dealDamage(baseDmg, atkEl, target);
+
+        const targets = (type === 'all' || type === 'delay') ? this.enemies : [this.currentTarget || this.enemies[Math.floor(Math.random() * this.enemies.length)]];
+
+        targets.forEach(target => {
+            this.dealDamage(baseDmg, attacker, target);
+        });
     }
 
     async enemyTurn() {
@@ -1032,11 +1297,28 @@ class Game {
                 setTimeout(() => enemy.el.classList.remove('shake'), 500);
 
                 const dmg = enemy.atk;
-                this.playerHp = Math.max(0, this.playerHp - dmg);
+                let finalDmg = dmg;
+
+                // 根性チェック
+                const monolith = this.party.find(m => m.name === 'モノリス');
+                if (monolith && monolith.status === '根性' && this.playerHp <= dmg) {
+                    finalDmg = this.playerHp - 1;
+                    if (finalDmg < 0) finalDmg = 0;
+                    if (this.playerHp > 1) {
+                        this.showDamageText('Gut!', 'gold', monolith.el);
+                        // 発動したので解除
+                        this.removeStatus(monolith);
+                    }
+                }
+
+                this.playerHp = Math.max(0, this.playerHp - finalDmg);
                 this.updateHpUI();
 
                 this.audio.playDamageSE();
-                this.showDamageText(dmg, 'red', this.hpBar);
+                this.showDamageText(finalDmg, 'red', this.hpBar);
+
+                // 被ダメージ時の状態変化トリガー
+                this.checkStatusByDamage();
 
                 document.getElementById('game-container').classList.add('shake');
                 setTimeout(() => document.getElementById('game-container').classList.remove('shake'), 500);
@@ -1078,13 +1360,290 @@ class Game {
         setTimeout(() => div.remove(), 1000);
     }
 
+    spawnHitEffect(targetEl) {
+        if (!targetEl) return;
+        const rect = targetEl.getBoundingClientRect();
+        const hit = document.createElement('div');
+        hit.className = 'hit-effect';
+        hit.style.left = (rect.left + rect.width / 2) + 'px';
+        hit.style.top = (rect.top + rect.height / 2) + 'px';
+        document.body.appendChild(hit);
+        setTimeout(() => hit.remove(), 400);
+    }
+
+    launchBeam(attacker, target, onHit) {
+        if (!attacker.el || !target.el) {
+            onHit();
+            return;
+        }
+
+        const rectFrom = attacker.el.getBoundingClientRect();
+        const rectTo = target.el.getBoundingClientRect();
+
+        // ビームのコンテナ（回転と位置を担当）
+        const container = document.createElement('div');
+        container.className = 'beam-container';
+
+        // ビームの実体（アニメーションを担当）
+        const beamBody = document.createElement('div');
+        beamBody.className = 'beam-body';
+        const color = this.getElementColor(attacker.element);
+        beamBody.style.backgroundColor = color;
+        beamBody.style.boxShadow = `0 0 15px 2px ${color}`;
+
+        container.appendChild(beamBody);
+
+        // スクロールを考慮
+        const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+        const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+
+        const x1 = rectFrom.left + rectFrom.width / 2 + scrollX;
+        const y1 = rectFrom.top + rectFrom.height / 2 + scrollY;
+        const x2 = rectTo.left + rectTo.width / 2 + scrollX;
+        const y2 = rectTo.top + rectTo.height / 2 + scrollY;
+
+        const length = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+        const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+
+        container.style.width = length + 'px';
+        container.style.left = x1 + 'px';
+        container.style.top = y1 + 'px';
+        container.style.transform = `rotate(${angle}deg)`;
+
+        document.body.appendChild(container);
+
+        setTimeout(() => {
+            container.remove();
+            onHit();
+        }, 300);
+    }
+
     gameOver() {
+        this.saveHighScore();
         this.modal.classList.remove('hidden');
         document.getElementById('start-screen').classList.add('hidden');
         const goScreen = document.getElementById('game-over-screen');
         goScreen.classList.remove('hidden');
         document.getElementById('final-score').textContent = this.score;
         this.audio.stopBGM();
+    }
+
+    // --- Status Effect Logic ---
+
+    checkStatusByDamage() {
+        const hpPct = this.playerHp / this.playerMaxHp;
+
+        this.party.forEach(m => {
+            // 根性: 20%以下で確率
+            if (m.name === 'モノリス' && hpPct <= 0.2 && !m.status) {
+                if (Math.random() < 0.3) m.addStatus('根性', 999);
+            }
+            // 憤怒: ダメージ時確率
+            if (m.name === 'ヒノトリ' && !m.status) {
+                if (Math.random() < 0.3) {
+                    m.addStatus('憤怒', Math.floor(Math.random() * 3) + 3);
+                    m.extraAtk += 50; // 攻撃力上昇
+                }
+            }
+            // 逆上: ダメージ時確率
+            if (m.name === 'スエゾー' && !m.status) {
+                if (Math.random() < 0.3) {
+                    m.addStatus('逆上', Math.floor(Math.random() * 3) + 3);
+                    m.gutsMultiplier = 1.5;
+                }
+            }
+            // 底力: 10%で発動
+            if (m.name === 'ガリ' && hpPct <= 0.1 && !m.status) {
+                m.addStatus('底力', Math.floor(Math.random() * 3) + 3);
+            }
+            // 必死: 40%を切った時に発動
+            if (m.name === 'プラント' && hpPct <= 0.4 && !m.status) {
+                m.addStatus('必死', Math.floor(Math.random() * 3) + 3);
+            }
+        });
+    }
+
+    checkStatusByCombo(combo) {
+        if (combo >= 5) {
+            this.comboHistory++;
+        } else {
+            this.comboHistory = 0;
+        }
+
+        const undine = this.party.find(m => m.name === 'ウンディーネ');
+        if (undine && this.comboHistory >= 3 && !undine.status) {
+            if (Math.random() < 0.5) {
+                undine.addStatus('余裕', Math.floor(Math.random() * 3) + 3);
+                undine.costMultiplier = 0.5;
+            }
+        }
+    }
+
+    tickStatusTurns() {
+        this.party.forEach(m => {
+            if (m.status && m.status !== '根性') {
+                m.statusTurns--;
+                if (m.statusTurns <= 0) {
+                    this.removeStatus(m);
+                }
+            }
+        });
+
+        // 操作時間延長終了チェック
+        if (this.board.moveTimeBonus > 0) {
+            this.board.moveTimeBonus--;
+            if (this.board.moveTimeBonus === 0) {
+                this.showDamageText('操作時間延長終了!', '#fff', document.getElementById('board-area'));
+            }
+        }
+    }
+
+    setupHelp() {
+        const helpBtn = document.getElementById('help-btn');
+        const helpOverlay = document.getElementById('help-overlay');
+        const closeHelpBtn = document.getElementById('close-help-btn');
+
+        if (helpBtn) {
+            helpBtn.onclick = () => helpOverlay.classList.remove('hidden');
+        }
+        if (closeHelpBtn) {
+            closeHelpBtn.onclick = () => helpOverlay.classList.add('hidden');
+        }
+    }
+
+    removeStatus(monster) {
+        monster.status = null;
+        monster.atkMultiplier = 1.0;
+        monster.gutsMultiplier = 1.0;
+        monster.costMultiplier = 1.0;
+        monster.critMultiplier = 1.0;
+        monster.updateStatusEffects();
+    }
+
+    // --- Shop & Item Bag ---
+
+    setupItemBag() {
+        const bagBtn = document.getElementById('item-bag-btn');
+        const closeBagBtn = document.getElementById('close-bag-btn');
+        const closeShopBtn = document.getElementById('close-shop-btn');
+
+        bagBtn.onclick = () => this.showBag();
+        closeBagBtn.onclick = () => this.bagOverlay.classList.add('hidden');
+        closeShopBtn.onclick = () => {
+            this.shopOverlay.classList.add('hidden');
+            this.spawnEnemies();
+            this.changeBackground();
+            this.audio.startBGM('battle'); // 戦闘曲に復帰
+        };
+    }
+
+    showShop() {
+        this.audio.startBGM('peace'); // 商人登場時は平和な曲に
+        this.shopOverlay.classList.remove('hidden');
+        this.shopItemsEl.innerHTML = '';
+
+        // 所持金表示エリアを追加
+        const scoreInfo = document.createElement('div');
+        scoreInfo.className = 'shop-score-info';
+        scoreInfo.textContent = `所持金: ${this.score} G`;
+        this.shopItemsEl.appendChild(scoreInfo);
+
+        // アイテムを3つランダムに選ぶ（重複ありでOKとする）
+        const itemIds = Object.keys(ITEMS);
+        for (let i = 0; i < 3; i++) {
+            const id = itemIds[Math.floor(Math.random() * itemIds.length)];
+            const item = ITEMS[id];
+
+            const div = document.createElement('div');
+            div.className = 'shop-item';
+            div.innerHTML = `
+                <div class="item-info">
+                    <div class="item-name">${item.name}</div>
+                    <div class="item-desc">${item.desc}</div>
+                    <div class="item-price">${item.price} G</div>
+                </div>
+                <button class="buy-btn" ${this.score < item.price ? 'disabled' : ''}>購入</button>
+            `;
+
+            const buyBtn = div.querySelector('.buy-btn');
+            buyBtn.onclick = () => {
+                if (this.score >= item.price) {
+                    this.score -= item.price;
+                    this.scoreEl.textContent = this.score;
+                    scoreInfo.textContent = `所持金: ${this.score} G`; // モーダル内の表示も更新
+                    this.inventory[id] = (this.inventory[id] || 0) + 1;
+                    buyBtn.disabled = true;
+                    buyBtn.textContent = '済';
+                    this.showDamageText('購入したぞ', '#ffd700', buyBtn);
+                }
+            };
+            this.shopItemsEl.appendChild(div);
+        }
+    }
+
+    showBag() {
+        this.bagOverlay.classList.remove('hidden');
+        this.bagItemsEl.innerHTML = '';
+
+        const ownedItems = Object.keys(this.inventory).filter(id => this.inventory[id] > 0);
+
+        if (ownedItems.length === 0) {
+            this.bagItemsEl.innerHTML = '<p style="text-align:center; padding:20px;">空っぽだ...</p>';
+            return;
+        }
+
+        ownedItems.forEach(id => {
+            const item = ITEMS[id];
+            const count = this.inventory[id];
+
+            const div = document.createElement('div');
+            div.className = 'bag-item';
+            div.innerHTML = `
+                <div class="item-info">
+                    <div class="item-name">${item.name} (x${count})</div>
+                    <div class="item-desc">${item.desc}</div>
+                </div>
+                <button class="use-btn">使用</button>
+            `;
+
+            div.querySelector('.use-btn').onclick = () => {
+                this.useItem(id);
+                this.bagOverlay.classList.add('hidden');
+            };
+            this.bagItemsEl.appendChild(div);
+        });
+    }
+
+    useItem(id) {
+        if (!this.inventory[id] || this.inventory[id] <= 0) return;
+
+        this.inventory[id]--;
+        const item = ITEMS[id];
+
+        switch (id) {
+            case 'hourglass':
+                this.board.moveTimeBonus = 3;
+                this.showDamageText('操作時間2倍(3T)!', '#fff', this.partyContainer);
+                break;
+            case 'oil':
+                const heal = Math.floor(this.playerMaxHp * 0.5);
+                this.playerHp = Math.min(this.playerMaxHp, this.playerHp + heal);
+                this.updateHpUI();
+                this.showDamageText(`+${heal} 回復!`, '#0f0', this.partyContainer);
+                break;
+            default:
+                if (id.includes('crystal')) {
+                    const el = item.element;
+                    this.party.forEach(m => {
+                        if (m.element === el) {
+                            m.addGuts(20);
+                            this.showDamageText('+20 Guts!', this.getElementColor(el), m.el);
+                        }
+                    });
+                    this.updateGutsUI(); // 即時反映
+                }
+                break;
+        }
     }
 }
 

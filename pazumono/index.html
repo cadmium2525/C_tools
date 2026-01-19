@@ -13,12 +13,16 @@
         <!-- ヘッダーエリア: 階層とスコア -->
         <header id="game-header">
             <div class="header-item">Floor: <span id="floor-display">1</span></div>
-            <div class="header-item">Score: <span id="score-display">0</span></div>
-            <div id="bgm-toggle" class="bgm-toggle-btn">BGM: ON</div>
+            <div class="header-item">賞金: <span id="score-display">0</span> G</div>
+            <div class="header-wrapper-right">
+                <div id="help-btn" class="help-btn">？</div>
+                <div id="bgm-toggle" class="bgm-toggle-btn">BGM: ON</div>
+            </div>
         </header>
 
         <!-- バトルエリア -->
         <div id="battle-area">
+            <div id="item-bag-btn" class="item-bag-btn">🎒</div>
             <!-- 敵モンスターエリア -->
             <div id="enemy-container">
                 <!-- JavaScriptで敵モンスターを動的に生成 -->
@@ -34,7 +38,7 @@
         <!-- ステータスエリア -->
         <div id="status-area">
             <div class="hp-bar-container">
-                <div class="hp-label">HP</div>
+                <div class="hp-label">ライフ</div>
                 <div class="hp-bar-bg">
                     <div id="player-hp-bar" class="hp-bar-fill" style="width: 100%;"></div>
                 </div>
@@ -61,6 +65,7 @@
         <div id="modal-overlay" class="visible">
             <div id="start-screen">
                 <h1>パズモノ</h1>
+                <p id="best-score-display" class="hidden">Best Score: <span id="best-score-val">0</span></p>
                 <p>画面をタップしてスタート</p>
                 <p class="instruction">音が出ます</p>
             </div>
@@ -71,6 +76,62 @@
             </div>
             <div id="switch-left" class="switch-btn">←</div>
             <div id="switch-right" class="switch-btn">→</div>
+        </div>
+
+        <!-- ショップモーダル -->
+        <div id="shop-overlay" class="hidden">
+            <div id="shop-screen">
+                <h2>商人</h2>
+                <p>アイテムを売ってやろう...</p>
+                <div id="shop-items">
+                    <!-- JSで動的に生成 -->
+                </div>
+                <button id="close-shop-btn">出発する</button>
+            </div>
+        </div>
+
+        <!-- アイテムバッグモーダル -->
+        <div id="bag-overlay" class="hidden">
+            <div id="bag-screen">
+                <h2>アイテム袋</h2>
+                <div id="bag-items">
+                    <!-- JSで動的に生成 -->
+                </div>
+                <button id="close-bag-btn">閉じる</button>
+            </div>
+        </div>
+
+        <!-- ヘルプモーダル -->
+        <div id="help-overlay" class="hidden">
+            <div id="help-screen">
+                <h2>遊び方</h2>
+                <div class="help-content">
+                    <section>
+                        <h3>基本ルール</h3>
+                        <p>・同じ色の<strong>ディスク</strong>を3つ以上繋げて消すと攻撃！</p>
+                        <p>・5つ以上繋げて消すと<strong>全体攻撃</strong>になります。</p>
+                        <p>・回復ディスクはライフを回復します。</p>
+                    </section>
+                    <section>
+                        <h3>コンボボーナス</h3>
+                        <p>・コンボが重なるほど攻撃力が上昇します。</p>
+                        <p>・<strong>7コンボ達成</strong>で最終ダメージがさらに<strong>2倍</strong>！</p>
+                    </section>
+                    <section>
+                        <h3>固有の状態変化</h3>
+                        <p>・モンスターは特定の条件で「状態変化」を起こします。</p>
+                        <p>【根性】ライフ1で耐える / 【憤怒】攻撃力UP</p>
+                        <p>【必死】クリティカル率大幅UP / 【余裕】ガッツ増加量UP</p>
+                        <p>【逆上】被ダメージ時ガッツUP / 【底力】ピンチで攻撃力3倍</p>
+                    </section>
+                    <section>
+                        <h3>★ 勇者スキル (モノリス)</h3>
+                        <p>・黒ディスクを<strong>5個連結</strong>で全員の攻撃力<strong>3倍</strong>！</p>
+                        <p>・黒ディスクを<strong>6個以上連結</strong>で全員の攻撃力<strong>5倍</strong>！</p>
+                    </section>
+                </div>
+                <button id="close-help-btn">閉じる</button>
+            </div>
         </div>
     </div>
 
