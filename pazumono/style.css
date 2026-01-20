@@ -1133,3 +1133,425 @@ button {
     border-bottom: 1px solid #444;
     padding-bottom: 5px;
 }
+
+/* Team Select Screen */
+#team-select-screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #222;
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    align-items: center;
+}
+
+#team-select-screen h2 {
+    color: #ffd700;
+    margin-bottom: 20px;
+}
+
+#team-slots {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.team-slot {
+    width: 50px;
+    height: 50px;
+    background: #333;
+    border: 2px dashed #666;
+    border-radius: 4px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.team-slot.filled {
+    border-style: solid;
+    border-color: #ffd700;
+}
+
+.team-slot img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.team-slot-label {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    font-size: 8px;
+    text-align: center;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+}
+
+#monster-list {
+    flex: 1;
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+    gap: 8px;
+    overflow-y: auto;
+    padding: 10px;
+    background: #111;
+    border: 1px solid #444;
+}
+
+.monster-card {
+    background: #333;
+    border: 1px solid #555;
+    border-radius: 4px;
+    padding: 2px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+}
+
+.monster-card.selected {
+    border-color: #00ff00;
+    box-shadow: 0 0 5px #00ff00;
+}
+
+.monster-card img {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+}
+
+.monster-rarity {
+    color: #ffd700;
+    font-size: 10px;
+    letter-spacing: -2px;
+}
+
+.monster-rarity span.star.red {
+    color: #ff3333;
+}
+
+.monster-rarity span.star.yellow {
+    color: #ffd700;
+}
+
+#start-adventure-btn,
+#gacha-close-btn {
+    background: linear-gradient(to bottom, #ffd700, #ffaa00);
+    color: #000;
+    border: 2px solid #fff;
+    font-weight: bold;
+    padding: 12px 30px;
+    margin-top: 15px;
+    font-size: 18px;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+/* Gacha Screen */
+#gacha-screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #000;
+    z-index: 3000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+#gacha-animation-container {
+    position: relative;
+    width: 300px;
+    height: 300px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#gacha-stone-img {
+    width: 200px;
+    height: 200px;
+    object-fit: contain;
+    transition: transform 0.1s;
+}
+
+#gacha-message {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: white;
+    font-size: 24px;
+    font-weight: bold;
+    animation: flash 1s infinite alternate;
+    pointer-events: none;
+    text-shadow: 0 0 10px #fff;
+}
+
+/* Shake Animation */
+@keyframes shake-gacha {
+    0% {
+        transform: translate(0, 0) rotate(0deg);
+    }
+
+    25% {
+        transform: translate(-5px, 5px) rotate(-5deg);
+    }
+
+    50% {
+        transform: translate(5px, -5px) rotate(5deg);
+    }
+
+    75% {
+        transform: translate(-5px, -5px) rotate(-5deg);
+    }
+
+    100% {
+        transform: translate(5px, 5px) rotate(5deg);
+    }
+}
+
+.shaking {
+    animation: shake-gacha 0.1s infinite;
+}
+
+/* Light Emission */
+.gacha-light {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 100px 50px rgba(255, 255, 255, 0.8);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 1s, box-shadow 1s;
+}
+
+.gacha-light.active {
+    opacity: 1;
+    width: 20px;
+    /* Grow slightly */
+    height: 20px;
+    animation: lightExpand 1s forwards;
+}
+
+@keyframes lightExpand {
+    0% {
+        box-shadow: 0 0 20px 10px rgba(255, 255, 255, 0.5);
+    }
+
+    100% {
+        box-shadow: 0 0 500px 300px rgba(255, 255, 255, 1);
+    }
+}
+
+/* Gacha Results */
+#gacha-results {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    width: 100%;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.8);
+    border-radius: 10px;
+    animation: fadeIn 1s;
+}
+
+.gacha-result-card {
+    width: 70px;
+    height: 90px;
+    background: #222;
+    border: 2px solid #555;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 5px;
+    opacity: 0;
+    animation: popIn 0.3s forwards;
+}
+
+@keyframes popIn {
+    0% {
+        transform: scale(0);
+        opacity: 0;
+    }
+
+    80% {
+        transform: scale(1.1);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.gacha-result-card img {
+    width: 45px;
+    height: 45px;
+    object-fit: contain;
+}
+
+.gacha-result-name {
+    font-size: 9px;
+    margin-top: 2px;
+    text-align: center;
+    overflow: hidden;
+    white-space: nowrap;
+    width: 100%;
+    text-overflow: ellipsis;
+}
+
+.new-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #f00;
+    color: #fff;
+    font-size: 9px;
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-weight: bold;
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.2);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* Start Screen Buttons */
+.start-btn-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 30px;
+    align-items: center;
+}
+
+.start-action-btn {
+    background: linear-gradient(135deg, #ff9900, #ffcc33);
+    border: 3px solid #fff;
+    border-radius: 50px;
+    padding: 15px 40px;
+    color: #fff;
+    font-size: 20px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 5px 15px rgba(255, 165, 0, 0.5);
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+    transition: transform 0.1s, box-shadow 0.1s;
+    min-width: 280px;
+}
+
+.start-action-btn:active {
+    transform: scale(0.95);
+    box-shadow: 0 2px 8px rgba(255, 165, 0, 0.5);
+}
+
+#continue-btn {
+    background: linear-gradient(135deg, #33cc33, #66ff66);
+    box-shadow: 0 5px 15px rgba(50, 205, 50, 0.5);
+}
+
+/* Ensure modal overlay is strictly on top and centered */
+#modal-overlay {
+    pointer-events: auto;
+}
+
+#team-skill-info {
+    width: 100%;
+    margin-bottom: 15px;
+    padding: 10px;
+    background: #333;
+    border: 1px solid #555;
+    border-radius: 5px;
+}
+
+#team-skill-info h3 {
+    margin: 0 0 5px 0;
+    color: #ffd700;
+    font-size: 16px;
+    border-bottom: 1px solid #555;
+    padding-bottom: 3px;
+}
+
+.ts-skill-box {
+    font-size: 12px;
+    color: #ddd;
+    margin-bottom: 3px;
+}
+
+.ts-label {
+    color: #00d2ff;
+    font-weight: bold;
+}
+
+#team-skill-info.hidden {
+    display: none;
+}
+
+.party-rarity {
+    position: absolute;
+    bottom: -10px;
+    /* Lower position even more */
+    /* Lower position */
+    left: 50%;
+    transform: translateX(-50%) scale(0.8);
+    /* Larger scale (was 0.6) */
+    width: 100%;
+    text-align: center;
+    pointer-events: none;
+    white-space: nowrap;
+    text-shadow: 1px 1px 1px #000;
+    z-index: 5;
+}
+
+.party-rarity .star {
+    font-size: 14px;
+    /* Larger */
+    margin: 0 -3px;
+    /* Maintain spacing */
+    /* Black Outline fallback */
+    text-shadow:
+        -1px -1px 0 #000,
+        1px -1px 0 #000,
+        -1px 1px 0 #000,
+        1px 1px 0 #000;
+}
+
+.star.yellow {
+    color: #ffd700;
+}
+
+.star.red {
+    color: #ff0000;
+}

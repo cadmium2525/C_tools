@@ -61,12 +61,50 @@
             </div>
         </div>
 
+        <!-- Team Select Screen -->
+        <div id="team-select-screen" class="hidden">
+            <h2>パーティ編成</h2>
+            <div id="team-slots">
+                <!-- 1 Hero + 5 Supporters -->
+            </div>
+            <div id="team-skill-info" class="hidden">
+                <h3 id="ts-name">Monster Name</h3>
+                <div id="ts-hero-skill" class="ts-skill-box">
+                    <span class="ts-label">勇者スキル:</span> <span id="ts-hero-desc">---</span>
+                </div>
+                <div id="ts-normal-skill" class="ts-skill-box">
+                    <span class="ts-label">スキル:</span> <span id="ts-normal-desc">---</span>
+                </div>
+            </div>
+            <div id="monster-list">
+                <!-- Grid of owned monsters -->
+            </div>
+            <button id="start-adventure-btn">冒険へ出発</button>
+        </div>
+
+        <!-- Gacha Screen -->
+        <div id="gacha-screen" class="hidden">
+            <div id="gacha-animation-container">
+                <img id="gacha-stone-img" src="images/gacha_stone_0.png" alt="Stone">
+                <div id="gacha-message">TAP SCREEN</div>
+            </div>
+            <div id="gacha-results" class="hidden">
+                <!-- Result Icons -->
+            </div>
+            <button id="gacha-close-btn" class="hidden">次へ</button>
+        </div>
+
+
         <!-- オーバーレイ画面 (スタート/ゲームオーバー) -->
         <div id="modal-overlay" class="visible">
             <div id="start-screen">
                 <h1>パズモノ</h1>
                 <p id="best-score-display" class="hidden">Best Score: <span id="best-score-val">0</span></p>
-                <p>画面をタップしてスタート</p>
+                <div class="start-btn-container">
+                    <button id="new-game-btn" class="start-action-btn">10連ガチャを引いてスタート</button>
+                    <button id="continue-btn" class="start-action-btn hidden">続きから始める</button>
+                </div>
+                <!-- <p>画面をタップしてスタート</p> Included in buttons now -->
                 <p class="instruction">音が出ます</p>
             </div>
             <div id="game-over-screen" class="hidden">
@@ -76,6 +114,7 @@
             </div>
             <div id="switch-left" class="switch-btn">←</div>
             <div id="switch-right" class="switch-btn">→</div>
+            <!-- continue-btn moved up -->
         </div>
 
         <!-- ショップモーダル -->
