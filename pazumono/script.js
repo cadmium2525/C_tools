@@ -50,28 +50,28 @@ const ITEMS = {
 
 const MONSTER_SKILLS = {
     'ヒノトリ': [
-        { name: 'フレイムライン', cost: 30, type: 'damage', val: 500, desc: '敵単体に火炎で500ダメージ' },
-        { name: 'プロミネンス', cost: 60, type: 'damage_spawn', val: 800, spawnColor: ELEMENTS.RED, spawnCount: 5, desc: '敵単体に800ダメージを与え、火ディスクを5個生成する' }
+        { name: 'フレイムライン', cost: 25, type: 'damage_row', val: 500, row: 'center', color: ELEMENTS.RED, desc: '敵単体に中ダメージ＋盤面中央横一列を赤ディスクに変換' },
+        { name: 'ファイアウェーブ', cost: 43, type: 'convert_dual', color1: ELEMENTS.RED, color2: ELEMENTS.HEART, desc: '全ディスクを赤ディスクと回復ディスクに変換' }
     ],
     'モノリス': [
-        { name: 'ウォール', cost: 40, type: 'delay', delay: 1, desc: '敵の攻撃を1ターン遅らせる' },
-        { name: 'グラビティ', cost: 80, type: 'convert', color: ELEMENTS.BLACK, desc: '全ディスクを黒ディスクに変換する' }
+        { name: '大たおれこみ', cost: 18, type: 'damage_shield', val: 300, shield: 0.5, desc: '敵単体に小ダメージ＋次のターンまでダメージを軽減' },
+        { name: 'オーロラゲート', cost: 34, type: 'damage_convert', val: 1000, from: ELEMENTS.WHITE, to: ELEMENTS.BLACK, desc: '敵全体に大ダメージ＋白ディスクを黒ディスクに変換' }
     ],
     'プラント': [
-        { name: 'シードショット', cost: 25, type: 'damage', val: 300, desc: '敵単体に300ダメージ' },
-        { name: 'メガフロール', cost: 50, type: 'convert', color: ELEMENTS.GREEN, desc: '全ディスクを緑ディスクに変換する' }
+        { name: 'ミツ', cost: 26, type: 'delay', delay: 1, desc: '敵1体の行動を1ターン遅らせる' },
+        { name: 'フラワービーム', cost: 42, type: 'damage_spawn', val: 800, spawnColor: ELEMENTS.GREEN, spawnCount: 8, target: 'all', desc: '敵全体に大ダメージ＋緑ディスクを8個生成' }
     ],
     'ウンディーネ': [
-        { name: 'アクアヒール', cost: 30, type: 'spawn', spawnColor: ELEMENTS.HEART, spawnCount: 6, desc: '回復ディスクを6個生成する' },
-        { name: 'タイダルウェーブ', cost: 70, type: 'convert', color: ELEMENTS.BLUE, desc: '全ディスクを青ディスクに変換する' }
+        { name: 'アクアウェイブ', cost: 19, type: 'spawn', spawnColor: ELEMENTS.BLUE, spawnCount: 6, desc: '青ディスクを6個生成' },
+        { name: 'クリスタルアロー', cost: 37, type: 'damage_col_convert', val: 800, target: 'all', color: ELEMENTS.BLUE, desc: '敵全体に大ダメージ＋左右の端の列を青ディスクに変換' }
     ],
     'スエゾー': [
-        { name: 'にらみつける', cost: 35, type: 'delay', delay: 1, desc: '敵の攻撃を1ターン遅らせる' },
-        { name: 'サイコキネシス', cost: 60, type: 'variable_damage', val: 100, desc: '盤面の色の種類が多いほど大ダメージ' }
+        { name: 'なめる', cost: 22, type: 'damage_delay', val: 300, delay: 1, desc: '敵1体に小ダメージ＋1ターン遅延' },
+        { name: 'ベロビンタ', cost: 35, type: 'damage_delay', val: 600, delay: 1, desc: '中ダメージ＋1ターン遅延' }
     ],
     'ガリ': [
-        { name: 'ゴッドハンド', cost: 45, type: 'damage', val: 600, desc: '敵単体に強力な光の拳を叩き込む' },
-        { name: '神の裁き', cost: 90, type: 'damage_spawn', val: 1000, spawnColor: ELEMENTS.WHITE, spawnCount: 8, desc: '敵に1000ダメージを与え、白ディスクを8個生成' }
+        { name: 'ナックル', cost: 18, type: 'damage_spawn', val: 300, spawnColor: ELEMENTS.WHITE, spawnCount: 1, desc: '敵単体に小ダメージ＋白ディスクを1個生成' },
+        { name: 'ゴッドライジング', cost: 40, type: 'variable_damage_ensure', val: 250, desc: '盤面の色の数に応じて大ダメージ＋全色3つ以上になるように生成' }
     ]
 };
 
@@ -154,6 +154,7 @@ const MONSTER_AURAS = {
 
 class Monster {
     constructor(data, isEnemy = false, level = 1) {
+        this.uid = data.uid || Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
         this.name = data.name || 'Unknown';
         this.img = data.img;
         this.isEnemy = isEnemy;
@@ -218,23 +219,49 @@ class Monster {
         this.critChanceMultiplier = 1.0;
 
         // Assign Skills (Hero Skill + Normal Skill) based on User Request
-        // "All 33 monsters have Hero Skill and Skill"
-        // Hero Skill = Monolith's skill (Connect 5 black -> 3x, 6+ -> 5x)
-        // Since user said "Current Monolith's implementation", I will generalize it.
-        // We will add a 'heroSkill' property.
-        this.heroSkill = {
-            desc: "同色5個消しで攻撃力3倍、6個以上で5倍",
-            trigger: (matchCount) => {
-                if (matchCount >= 6) return 5.0;
-                if (matchCount === 5) return 3.0;
-                return 1.0;
-            }
-        };
-
-        // Assign a default skill if none found in MONSTER_SKILLS
-        // We need a mapping for all 33. Existing MONSTER_SKILLS only has a few.
-        // I will dynamically assign a skill if not present.
+        this.assignHeroSkill();
         this.assignDefaultSkills();
+    }
+
+    assignHeroSkill() {
+        let types = [1, 2, 3];
+        this.heroSkillType = types[Math.floor(Math.random() * types.length)];
+
+        // 特定のモンスターは勇者スキルを固定
+        if (this.name === 'モノリス') this.heroSkillType = 1;
+        if (this.name === 'ガリ') this.heroSkillType = 2;
+
+        switch (this.heroSkillType) {
+            case 1:
+                this.heroSkill = {
+                    type: 1,
+                    desc: (this.name === 'モノリス')
+                        ? "黒ディスクを5個繋げて消すと味方全員の攻撃力が4倍、6個で6倍"
+                        : "同色ディスク5個消しで攻撃力4倍、6個以上で6倍",
+                    calc: (type, count) => {
+                        if (type === this.element) {
+                            if (count >= 6) return 6.0;
+                            if (count === 5) return 4.0;
+                        }
+                        return 1.0;
+                    }
+                };
+                break;
+            case 2:
+                this.heroSkill = {
+                    type: 2,
+                    desc: "3色:2倍, 4色:3倍, 5色:5倍, 5色+回復:7倍",
+                    // calc handled in Game.processTurn based on unique types
+                };
+                break;
+            case 3:
+                this.heroSkill = {
+                    type: 3,
+                    desc: "3コンボ:2倍, 7コンボ:6倍, 10コンボ:10倍",
+                    // calc handled in Game.processTurn based on comboCount
+                };
+                break;
+        }
     }
 
     assignDefaultSkills() {
@@ -242,9 +269,11 @@ class Monster {
             this.skills = MONSTER_SKILLS[this.name];
         } else {
             // Generic skills based on Element
+            const elementNames = ['赤', '緑', '黄', '青', '白', '黒'];
+            const elName = elementNames[this.element] || '無';
             const genericSkills = [
-                { name: 'アタック', cost: 20, type: 'damage', val: this.atk * 2, desc: '敵単体にダメージ' },
-                { name: 'ヒール', cost: 30, type: 'spawn', spawnColor: ELEMENTS.HEART, spawnCount: 3, desc: '回復ドロップ生成' }
+                { name: `${elName}のアタック`, cost: 20, type: 'damage', val: this.atk * 3, desc: `敵単体に${elName}属性ダメージ` },
+                { name: `${elName}の恵み`, cost: 30, type: 'spawn', spawnColor: this.element, spawnCount: 5, desc: `${elName}ディスクを5個生成` }
             ];
             this.skills = genericSkills;
         }
@@ -388,6 +417,8 @@ class Board {
         this.timerId = null;
 
         const handleStart = (e) => {
+            // Fix: ドラッグ開始時に以前のリスナーを確実に掃除し、多重起動を防ぐ
+            handleEnd();
             if (this.game.isProcessing) return;
             e.preventDefault();
 
@@ -436,6 +467,10 @@ class Board {
             document.addEventListener('touchmove', handleMove, { passive: false });
             document.addEventListener('mouseup', handleEnd);
             document.addEventListener('touchend', handleEnd);
+
+            // Fix: 画面外やタブ切り替えで操作不能になるのを防ぐ
+            window.addEventListener('blur', handleEnd);
+            document.addEventListener('mouseleave', handleEnd);
         };
 
         const handleMove = (e) => {
@@ -505,6 +540,8 @@ class Board {
             document.removeEventListener('touchmove', handleMove);
             document.removeEventListener('mouseup', handleEnd);
             document.removeEventListener('touchend', handleEnd);
+            window.removeEventListener('blur', handleEnd);
+            document.removeEventListener('mouseleave', handleEnd);
 
             if (this.isTimerStarted) {
                 this.game.processTurn();
@@ -762,6 +799,105 @@ class Board {
             setTimeout(() => orb.el.style.transform = 'scale(1)', 200);
         });
     }
+
+    convertRow(rowIdx, targetType) {
+        if (rowIdx === 'center') rowIdx = Math.floor(this.height / 2);
+        for (let c = 0; c < this.width; c++) {
+            const orb = this.grid[rowIdx][c];
+            orb.type = targetType;
+            orb.isSkillGenerated = true;
+            orb.el.dataset.type = targetType;
+            orb.el.classList.toggle('square', targetType === ELEMENTS.HEART);
+        }
+    }
+
+    convertColumns(colIndices, targetType) {
+        colIndices.forEach(c => {
+            if (c < 0 || c >= this.width) return;
+            for (let r = 0; r < this.height; r++) {
+                const orb = this.grid[r][c];
+                orb.type = targetType;
+                orb.isSkillGenerated = true;
+                orb.el.dataset.type = targetType;
+                orb.el.classList.toggle('square', targetType === ELEMENTS.HEART);
+            }
+        });
+    }
+
+    convertDual(color1, color2) {
+        for (let r = 0; r < this.height; r++) {
+            for (let c = 0; c < this.width; c++) {
+                const orb = this.grid[r][c];
+                orb.type = Math.random() < 0.5 ? color1 : color2;
+                orb.isSkillGenerated = true;
+                orb.el.dataset.type = orb.type;
+                orb.el.classList.toggle('square', orb.type === ELEMENTS.HEART);
+            }
+        }
+    }
+
+    convertSpecific(fromType, toType) {
+        for (let r = 0; r < this.height; r++) {
+            for (let c = 0; c < this.width; c++) {
+                const orb = this.grid[r][c];
+                if (orb.type === fromType) {
+                    orb.type = toType;
+                    orb.el.dataset.type = toType;
+                    orb.el.classList.toggle('square', toType === ELEMENTS.HEART);
+                }
+            }
+        }
+    }
+
+    ensureMinimumOrbs(minCount = 3) {
+        // 全色（0-6）について、確実にminCount以上ある状態にする
+        // 開発メモ：無差別に上書きすると他色の確保分を消してしまうため、余剰分から奪うようにする。
+
+        for (let type = 0; type < 7; type++) {
+            const currentPositions = [];
+            const otherPositions = [];
+
+            for (let r = 0; r < this.height; r++) {
+                for (let c = 0; c < this.width; c++) {
+                    if (this.grid[r][c].type === type) {
+                        currentPositions.push({ r, c });
+                    } else {
+                        // 4個以上ある色（削っても3個残る）の場所をリストアップ
+                        const otherType = this.grid[r][c].type;
+                        let otherCount = 0;
+                        for (let r2 = 0; r2 < this.height; r2++) {
+                            for (let c2 = 0; c2 < this.width; c2++) {
+                                if (this.grid[r2][c2].type === otherType) otherCount++;
+                            }
+                        }
+                        if (otherCount > minCount) {
+                            otherPositions.push({ r, c });
+                        }
+                    }
+                }
+            }
+
+            if (currentPositions.length < minCount) {
+                let needed = minCount - currentPositions.length;
+
+                // otherPositionsをシャッフル
+                for (let i = otherPositions.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [otherPositions[i], otherPositions[j]] = [otherPositions[j], otherPositions[i]];
+                }
+
+                for (let pos of otherPositions) {
+                    if (needed <= 0) break;
+                    const orb = this.grid[pos.r][pos.c];
+                    orb.type = type;
+                    orb.isSkillGenerated = true;
+                    orb.el.dataset.type = type;
+                    orb.el.classList.toggle('square', type === ELEMENTS.HEART);
+                    needed--;
+                }
+            }
+        }
+    }
 }
 
 class Game {
@@ -778,6 +914,8 @@ class Game {
         this.playerMaxHp = 0;
         this.currentTarget = null;
         this.comboHistory = 0; // 5コンボ以上の連続達成数
+        this.damageShield = 1.0; // ダメージ軽減倍率
+        this.longPressTimer = null; // 長押し用タイマー
 
         // UI Refs
         this.floorEl = document.getElementById('floor-display');
@@ -810,6 +948,7 @@ class Game {
         this.ownedMonsters = []; // Array of Monster objects
         this.party = []; // Array of Monster objects (max 6)
         this.lastGachaResults = [];
+        this.gachaCount = 0; // Initialize to prevent NaN
 
         // Load Game Check
         if (localStorage.getItem('pazumono_save_data')) {
@@ -827,58 +966,52 @@ class Game {
 
     startNewGame() {
         this.ownedMonsters = [];
-        this.party = [];
+        this.party = []; // Fixed size 6, filled with nulls strictly? Or just array.
+        // Let's initialize party with 6 nulls to support slot-based editing
+        this.party = [null, null, null, null, null, null];
+
         this.floor = 1;
         this.score = 0;
         this.inventory = {};
+
+        this.shopItemsCache = [];
+        this.shopFloor = 0;
+        this.gachaCount = 0; // Track 5-pull gacha count for cost scaling
 
         // 1. Initial 10-pull Gacha (Free)
         this.drawGacha(10, true);
     }
 
     // --- Gacha System ---
+    // --- Gacha System ---
     drawGacha(count, isInitial = false) {
+        if (!isInitial) {
+            this.gachaCount++;
+        }
+
         const results = [];
         for (let i = 0; i < count; i++) {
-            // Rarity Logic: 1-3 only from Gacha (Logic from user request "Max 3 from gacha")
-            // Probability: 1:60%, 2:25%, 3:15%
-            // Rarity Logic
+            // Rarity Logic: 1-3 only from Gacha
             const rand = Math.random() * 100;
             let rarity = 1;
             if (rand < 15) rarity = 3;
             else if (rand < 40) rarity = 2;
 
-            // Enforce max rarity 3 for initial gacha (Already consistent with logic above? Yes, max is 3)
-            // User said "Initial gacha has star 4". 
-            // Maybe fusion caused it? Yes, if duplicate and fusion happens, 3 becomes 4.
-            // By disabling fusion above, we fix this.
-            // But let's be safe.
             if (isInitial && rarity > 3) rarity = 3;
 
             // Pick Random Monster Species
             const speciesName = MONSTER_SPECIES[Math.floor(Math.random() * MONSTER_SPECIES.length)];
             const imgName = speciesName + '.png';
 
-            // Check if we already have this monster (for fusion)
-            let existing = this.ownedMonsters.find(m => m.name === speciesName);
-
-            // Create New Monster Data
-            // We need to look up base stats? Or just generate fresh?
-            // Since we don't have a master stats table for all 33, we rely on Monster constructor defaults/logic
-            // Ideally we should have a lookup. For now we pass minimal data and let Constructor handle it.
             const monsterData = {
                 name: speciesName,
                 img: imgName,
                 rarity: rarity,
-                // Element is random in constructor if not passed. 
-                // We should make it consistent for same species? 
-                // "Aura definition" exists! MONSTER_AURAS. Use that for Element.
             };
 
             // Resolve Element from Aura
             const auraColor = MONSTER_AURAS[speciesName];
             if (auraColor) {
-                // Map color name to ID
                 if (auraColor === '赤') monsterData.element = ELEMENTS.RED;
                 else if (auraColor === '緑') monsterData.element = ELEMENTS.GREEN;
                 else if (auraColor === '青') monsterData.element = ELEMENTS.BLUE;
@@ -889,37 +1022,9 @@ class Game {
 
             const newMonster = new Monster(monsterData);
 
-            // Disable auto-fusion for Initial Gacha?
-            // User complained "10-pull gives 7". This implies they want 10 separate monsters.
-            // If we have auto-fusion, count decreases.
-            // Let's force NO FUSION for initial gacha or unique logic.
-            // Actually, simply pushing to results and ownedMonsters without checking `existing` for initial gacha is better.
-            // But wait, if we get duplicate species, do we want 2 separate entries?
-            // "10連ガチャなのに7体しか出なくなりました" -> Expects 10 cards.
-            // So we should allow duplicates for initial gacha.
-
-            if (isInitial) {
-                this.ownedMonsters.push(newMonster);
-                results.push({ monster: newMonster, isNew: true });
-            } else {
-                if (existing) {
-                    if (existing.rarity < 10) {
-                        existing.rarity++;
-                        const baseStats = RARITY_STATS[existing.rarity];
-                        existing.maxHp = baseStats.hp;
-                        existing.atk = baseStats.atk;
-                        existing.currentHp = existing.maxHp;
-                        results.push({ monster: existing, isNew: false, fused: true });
-                    } else {
-                        // Max rarity duplicate. Just add new one? Or nothing?
-                        this.ownedMonsters.push(newMonster);
-                        results.push({ monster: newMonster, isNew: true });
-                    }
-                } else {
-                    this.ownedMonsters.push(newMonster);
-                    results.push({ monster: newMonster, isNew: true });
-                }
-            }
+            // NO AUTO FUSION. Always add as new.
+            this.ownedMonsters.push(newMonster);
+            results.push({ monster: newMonster, isNew: true });
         }
 
         this.lastGachaResults = results;
@@ -942,6 +1047,9 @@ class Game {
         stoneImg.classList.remove('hidden');
         message.classList.remove('hidden');
 
+        // BGM切り替え
+        this.audio.startBGM('gacha');
+
         // Wait for click
         const clickHandler = () => {
             screen.removeEventListener('click', clickHandler);
@@ -949,17 +1057,20 @@ class Game {
             // Animation Sequence
             message.classList.add('hidden');
             stoneImg.classList.add('shaking');
+            this.audio.playGachaShakeSE();
 
             // Stone Break Animation (Crumble 1 -> 2 -> 3)
             let step = 1;
             const animInterval = setInterval(() => {
                 if (step <= 3) {
                     stoneImg.src = `images/gacha_crumble_${step}.png`;
+                    this.audio.playGachaShakeSE();
                     step++;
                 } else {
                     clearInterval(animInterval);
                     stoneImg.classList.remove('shaking');
                     stoneImg.classList.add('hidden');
+                    this.audio.playGachaBreakSE();
 
                     // Show Light Effect based on max rarity in result
                     const maxRarity = Math.max(...results.map(r => r.monster.rarity));
@@ -1020,14 +1131,14 @@ class Game {
         closeBtn.classList.remove('hidden');
         closeBtn.onclick = () => {
             document.getElementById('gacha-screen').classList.add('hidden');
+
             if (isInitial) {
+                this.audio.startBGM('peace');
                 this.openTeamSelect();
             } else {
-                // Shop Gacha (Floor 10 etc.)
-                // User wants to check/swap party members after gacha.
-                // Call openTeamSelect, which leads to startAdventure -> startLevel -> spawnEnemies.
                 this.saveGame();
-                this.openTeamSelect();
+                // Return to shop (Refresh shop to update cost!)
+                this.showShop(true);
             }
         };
     }
@@ -1050,21 +1161,48 @@ class Game {
     }
 
     // --- Team Selection ---
-    openTeamSelect() {
+    openTeamSelect(fromShop = false) {
         const screen = document.getElementById('team-select-screen');
         screen.classList.remove('hidden');
+
+        if (fromShop) {
+            this.shopOverlay.classList.add('hidden');
+        }
+
+        document.getElementById('start-adventure-btn').textContent = fromShop ? "決定" : "冒険に出る";
+
+        // Reset party to 6 slots if needed (to ensure we can edit 6 slots)
+        if (this.party.length < 6) {
+            while (this.party.length < 6) this.party.push(null);
+        }
+
+        this.selectedTeamSlot = null; // Reset selection
         this.renderTeamSelect();
 
         document.getElementById('start-adventure-btn').onclick = () => {
-            // Validate: Must have 1 Hero + 5 Supports? Or just 1 Hero?
-            // User: "勇者モン1体と供モン5体を選択" (Select 1 Hero + 5 Servants)
-            // Check if party is valid
-            if (this.party.length > 0) { // Allow less than 6? Assume Yes
-                screen.classList.add('hidden');
-                this.startAdventure();
-            } else {
-                alert("少なくとも1体のモンスターを選択してください！");
+            // 全スロットが埋まっているかチェック (6体必須)
+            const filledSlots = this.party.filter(m => m !== null);
+            if (filledSlots.length < 6) {
+                alert("パーティを6体すべて埋めてください！\n（スロットを選択してモンスターを選んでください）");
+                return;
             }
+
+            if (fromShop) {
+                document.getElementById('team-select-screen').classList.add('hidden');
+                this.showShop((this.floor - 1) % 10 === 0); // Re-render shop
+                return;
+            }
+
+            // gameplay cleanup
+
+            // Temp cleanup for adventure
+            const adventureParty = this.party.filter(m => m !== null);
+
+            // Clean up nulls for actual gameplay session
+            this.party = adventureParty;
+
+            document.getElementById('team-select-screen').classList.add('hidden');
+            this.startAdventure();
         };
     }
 
@@ -1072,11 +1210,15 @@ class Game {
         const slotsContainer = document.getElementById('team-slots');
         const listContainer = document.getElementById('monster-list');
 
-        // Fix party size to 6. Empty slots if needed.
         slotsContainer.innerHTML = '';
+        // Always 6 slots
         for (let i = 0; i < 6; i++) {
             const slot = document.createElement('div');
             slot.className = 'team-slot';
+            if (this.selectedTeamSlot === i) {
+                slot.classList.add('selected-slot'); // CSS style needed
+            }
+
             const member = this.party[i];
 
             if (member) {
@@ -1085,33 +1227,38 @@ class Game {
                 img.src = IMAGE_PATH + member.img;
                 slot.appendChild(img);
 
-                // Label: Hero or Support
                 const label = document.createElement('div');
                 label.className = 'team-slot-label';
                 label.textContent = (i === 0) ? '勇者' : `供${i}`;
                 slot.appendChild(label);
-
-                // Click to remove
-                slot.onclick = () => {
-                    this.party.splice(i, 1);
-                    this.renderTeamSelect();
-                };
             } else {
-                slot.textContent = (i === 0) ? '勇者' : '供';
+                slot.textContent = (i === 0) ? '勇者' : `供${i}`;
                 slot.style.color = '#555';
-                slot.style.fontSize = '10px';
+                slot.style.fontSize = '12px';
             }
+
+            slot.onclick = () => {
+                // Select this slot
+                if (this.selectedTeamSlot === i) {
+                    this.selectedTeamSlot = null; // Toggle off
+                } else {
+                    this.selectedTeamSlot = i;
+                }
+                this.renderTeamSelect();
+            };
+
             slotsContainer.appendChild(slot);
         }
 
         listContainer.innerHTML = '';
         this.ownedMonsters.forEach(m => {
-            // If already in party, mark selected? Or hide?
-            const isInParty = this.party.includes(m);
+            // Check if m is in party
+            const currentSlot = this.party.findIndex(p => p === m); // Exact object match
+            const isInParty = currentSlot !== -1;
 
             const card = document.createElement('div');
             card.className = 'monster-card';
-            if (isInParty) card.classList.add('selected');
+            if (isInParty) card.classList.add('selected'); // Visual dimming
 
             const img = document.createElement('img');
             img.src = IMAGE_PATH + m.img;
@@ -1123,22 +1270,47 @@ class Game {
             card.appendChild(img);
             card.appendChild(rarity);
 
+            // Show current position badge if in party
+            if (isInParty) {
+                const badge = document.createElement('div');
+                badge.className = 'slot-badge';
+                badge.textContent = (currentSlot === 0) ? '勇' : currentSlot;
+                card.appendChild(badge);
+            }
+
             card.onclick = () => {
-                // Show Info on click
                 this.showTeamMemberInfo(m);
 
-                if (isInParty) {
-                    // Maybe remove?
-                    // this.party = this.party.filter(p => p !== m);
-                } else {
-                    if (this.party.length < 6) {
-                        this.party.push(m);
+                // If a slot is selected, Assign/Swap
+                if (this.selectedTeamSlot !== null) {
+                    const targetSlot = this.selectedTeamSlot;
+
+                    if (isInParty) {
+                        if (currentSlot === targetSlot) {
+                            // Clicked same monster in same slot -> Remove?
+                            this.party[targetSlot] = null;
+                        } else {
+                            // Move/Swap?
+                            // Logic: Move m to targetSlot.
+                            // What happens to content of targetSlot?
+                            // Swap them?
+                            const existingInTarget = this.party[targetSlot];
+                            this.party[targetSlot] = m;
+                            this.party[currentSlot] = existingInTarget; // Swap
+                        }
                     } else {
-                        // Full
-                        alert("パーティは満員です");
+                        // Not in party -> Assign to targetSlot
+                        this.party[targetSlot] = m;
                     }
+                    this.renderTeamSelect();
+                } else {
+                    // No slot selected -> Do nothing or auto-fill?
+                    // Let's prompt user or just select first empty?
+                    // Guidance says "Specify slot". So waiting for slot selection is better.
+                    // But for better UX, if no slot selected, maybe show alert "Select a slot first"?
+                    // Or just do nothing.
+                    // I will do nothing but maybe highlight slots?
                 }
-                this.renderTeamSelect();
             };
 
             listContainer.appendChild(card);
@@ -1151,17 +1323,13 @@ class Game {
 
         document.getElementById('ts-name').textContent = monster.name;
 
-        let heroDesc = "リーダーと同色のドロップを5個以上消すと攻撃力2倍";
-        if (monster.name === 'モノリス') {
-            heroDesc = "黒5個消3倍、6個消5倍";
-        }
-        // Add more specific descriptions here later
+        // 勇者スキルは monster.heroSkill.desc を使用
+        document.getElementById('ts-hero-desc').textContent = monster.heroSkill.desc;
 
-        document.getElementById('ts-hero-desc').textContent = heroDesc;
-
-        const skills = MONSTER_SKILLS[monster.name];
+        // 固有スキルまたはデフォルトスキルを表示
+        const skills = monster.skills || [];
         if (skills && skills.length > 0) {
-            const s = skills[0];
+            const s = skills[0]; // 最初のスキルを表示
             document.getElementById('ts-normal-desc').textContent = `${s.name}: ${s.desc}`;
         } else {
             document.getElementById('ts-normal-desc').textContent = "なし";
@@ -1196,6 +1364,8 @@ class Game {
             inventory: this.inventory,
             ownedMonsters: this.ownedMonsters,
             party: this.party,
+            gachaCount: this.gachaCount,
+            currentBg: this.currentBg, // 背景も保存
             // currentHp? If saving mid-dungeon
         };
         localStorage.setItem('pazumono_save_data', JSON.stringify(data));
@@ -1209,14 +1379,24 @@ class Game {
         this.floor = data.floor || 1;
         this.score = data.score || 0;
         this.inventory = data.inventory || {};
+        this.gachaCount = data.gachaCount || 0;
 
         // Reconstruct Monsters (Lose methods on JSON stringify, need to re-hydrate)
         this.ownedMonsters = (data.ownedMonsters || []).map(d => this.hydrateMonster(d));
-        this.party = (data.party || []).map(d => this.hydrateMonster(d));
+        // partyはownedMonstersの中の同一uidのインスタンスを参照させる
+        this.party = (data.party || []).map(d => {
+            if (!d) return null;
+            return this.ownedMonsters.find(m => m.uid === d.uid) || this.hydrateMonster(d);
+        });
 
         // Update UI
         document.getElementById('floor-display').textContent = this.floor;
         document.getElementById('score-display').textContent = this.score;
+
+        // 背景の復元
+        if (data.currentBg) {
+            this.changeBackground(data.currentBg);
+        }
 
         // Start Adventure
         if (this.party.length > 0) {
@@ -1230,13 +1410,14 @@ class Game {
     hydrateMonster(data) {
         // Create new Monster instance and copy props
         const m = new Monster(data);
-        // Copy dynamic props that might have changed
+        m.uid = data.uid || m.uid;
         m.rarity = data.rarity;
-        m.currrentHp = data.currentHp;
+        m.currentHp = data.currentHp;
         m.guts = data.guts || 0;
-        // Recalculate stats in case update changed formula? Or trust data?
-        // Constructor sets maxHp based on rarity. Trust constructor unless data overrides.
-        // If save has maxHp, use it?
+        m.heroSkillType = data.heroSkillType || m.heroSkillType;
+        m.assignHeroSkill();
+        m.assignDefaultSkills();
+
         return m;
     }
 
@@ -1254,19 +1435,22 @@ class Game {
     }
 
     initHighScore() {
-        this.bestScore = parseInt(localStorage.getItem('pazumono_best_score')) || 0;
+        this.bestFloor = parseInt(localStorage.getItem('pazumono_best_floor')) || 0;
         const bestScoreDisplay = document.getElementById('best-score-display');
         const bestScoreVal = document.getElementById('best-score-val');
-        if (bestScoreDisplay && this.bestScore > 0) {
+        if (bestScoreDisplay && this.bestFloor > 0) {
             bestScoreDisplay.classList.remove('hidden');
-            bestScoreVal.textContent = this.bestScore;
+            bestScoreVal.textContent = this.bestFloor + 'F';
         }
+        // Legacy cleanup or migration?
+        // If old score exists but new floor doesn't? Assume fresh start for feature.
     }
 
     saveHighScore() {
-        if (this.score > this.bestScore) {
-            this.bestScore = this.score;
-            localStorage.setItem('pazumono_best_score', this.bestScore);
+        // High Score is now based on Floor Reached
+        if (this.floor > this.bestFloor) {
+            this.bestFloor = this.floor;
+            localStorage.setItem('pazumono_best_floor', this.bestFloor);
         }
     }
 
@@ -1355,7 +1539,7 @@ class Game {
         title.textContent = monster.name + ' Skill';
         skillModal.appendChild(title);
 
-        const monsterSkills = MONSTER_SKILLS[monster.name] || [];
+        const monsterSkills = monster.skills || [];
         monsterSkills.forEach(skill => {
             const skillContainer = document.createElement('div');
             skillContainer.className = 'skill-item';
@@ -1395,30 +1579,24 @@ class Game {
 
         document.body.appendChild(skillModal);
 
-        // 勇者スキルの表示 (勇者モンのみ)
-        if (monster === this.party[0]) {
-            const customHeroDesc = (monster.name === 'モノリス')
-                ? '黒ディスクを5つ繋げて消すと全員の攻撃力が3倍、6個以上で5倍！'
-                : 'リーダーと同色のドロップを5個以上消すと攻撃力2倍';
+        // 勇者スキルの表示
+        const heroInfo = document.createElement('div');
+        heroInfo.className = 'hero-skill-info';
 
-            const heroInfo = document.createElement('div');
-            heroInfo.className = 'hero-skill-info';
+        const heroTitle = document.createElement('div');
+        heroTitle.className = 'hero-skill-title';
+        heroTitle.textContent = (monster === this.party[0]) ? '★ 勇者スキル (発動中) ★' : '★ 勇者スキル (リーダー時) ★';
 
-            const heroTitle = document.createElement('div');
-            heroTitle.className = 'hero-skill-title';
-            heroTitle.textContent = '★ 勇者スキル ★';
+        const heroDesc = document.createElement('div');
+        heroDesc.className = 'skill-desc';
+        heroDesc.style.color = '#fff';
+        heroDesc.textContent = monster.heroSkill.desc;
 
-            const heroDesc = document.createElement('div');
-            heroDesc.className = 'skill-desc';
-            heroDesc.style.color = '#fff';
-            heroDesc.textContent = customHeroDesc;
+        heroInfo.appendChild(heroTitle);
+        heroInfo.appendChild(heroDesc);
 
-            heroInfo.appendChild(heroTitle);
-            heroInfo.appendChild(heroDesc);
-
-            // Append BEFORE close button
-            skillModal.insertBefore(heroInfo, closeBtn);
-        }
+        // Append BEFORE close button
+        skillModal.insertBefore(heroInfo, closeBtn);
     }
 
     async executeSkill(monster, skill, cost) {
@@ -1438,34 +1616,50 @@ class Game {
 
         // Apply Effect
         switch (skill.type) {
-            case 'damage':
-                this.dealSkillDamage(skill.val, monster, 'single');
-                break;
-            case 'variable_damage':
-                const boardColors = new Set();
-                this.board.grid.forEach(row => row.forEach(cell => boardColors.add(cell.type)));
-                const diversity = boardColors.size;
-                this.dealSkillDamage(skill.val * diversity, monster, 'single');
-                break;
-            case 'convert':
-                this.board.convertAllOrbs(skill.color);
-                break;
-            case 'spawn':
-                this.board.spawnOrbs(skill.spawnColor, skill.spawnCount);
-                break;
-            case 'damage_spawn':
-                this.dealSkillDamage(skill.val, monster, 'single');
-                this.board.spawnOrbs(skill.spawnColor, skill.spawnCount);
-                break;
             case 'delay':
             case 'damage_delay':
                 if (skill.val) this.dealSkillDamage(skill.val, monster, skill.type);
                 const delay = skill.delay || 1;
                 this.enemies.forEach(e => {
+                    if (skill.type === 'damage_delay' && e !== (this.currentTarget || this.enemies[0])) return; // 単体遅延の場合
+
                     e.currentTimer += delay;
                     if (e.timerEl) e.timerEl.textContent = `あと${e.currentTimer}`;
                     this.showDamageText(`Delay +${delay}`, 'cyan', e.el);
                 });
+                break;
+            case 'damage_shield':
+                this.dealSkillDamage(skill.val, monster, 'single');
+                this.damageShield = skill.shield;
+                this.showDamageText('SHIELD UP!', 'gold', this.hpBar);
+                break;
+            case 'damage_convert':
+                this.dealSkillDamage(skill.val, monster, 'all');
+                this.board.convertSpecific(skill.from, skill.to);
+                break;
+            case 'damage_row':
+                this.dealSkillDamage(skill.val, monster, 'single');
+                this.board.convertRow(skill.row, skill.color);
+                break;
+            case 'convert_dual':
+                this.board.convertDual(skill.color1, skill.color2);
+                break;
+            case 'damage_col_convert':
+                this.dealSkillDamage(skill.val, monster, 'all');
+                this.board.convertColumns([0, 5], skill.color);
+                break;
+            case 'spawn':
+                this.board.spawnOrbs(skill.spawnColor, skill.spawnCount);
+                break;
+            case 'damage_spawn':
+                this.dealSkillDamage(skill.val, monster, skill.target || 'single');
+                this.board.spawnOrbs(skill.spawnColor, skill.spawnCount);
+                break;
+            case 'variable_damage_ensure':
+                const boardColors = new Set();
+                this.board.grid.forEach(row => row.forEach(cell => boardColors.add(cell.type)));
+                this.dealSkillDamage(skill.val * boardColors.size, monster, 'all');
+                this.board.ensureMinimumOrbs(3);
                 break;
         }
 
@@ -1554,8 +1748,9 @@ class Game {
         this.spawnEnemies();
     }
 
-    changeBackground() {
-        const bg = BACKGROUND_IMAGES[Math.floor(Math.random() * BACKGROUND_IMAGES.length)];
+    changeBackground(bgName = null) {
+        const bg = bgName || BACKGROUND_IMAGES[Math.floor(Math.random() * BACKGROUND_IMAGES.length)];
+        this.currentBg = bg; // 現在の背景を記録
         const battleArea = document.getElementById('battle-area');
         battleArea.style.backgroundImage = `url('images/${bg}')`;
     }
@@ -1610,85 +1805,132 @@ class Game {
                 }
             };
 
+            // 長押しでステータス表示
+            const handlePressStart = (e) => {
+                this.longPressTimer = setTimeout(() => {
+                    this.showEnemyStats(enemy);
+                }, 600);
+            };
+            const handlePressEnd = () => {
+                clearTimeout(this.longPressTimer);
+            };
+
+            div.addEventListener('mousedown', handlePressStart);
+            div.addEventListener('touchstart', handlePressStart, { passive: true });
+            div.addEventListener('mouseup', handlePressEnd);
+            div.addEventListener('touchend', handlePressEnd);
+            div.addEventListener('mouseleave', handlePressEnd);
+
             this.enemyContainer.appendChild(div);
         }
+    }
+
+    showEnemyStats(enemy) {
+        // 既存のモーダルがあれば削除
+        const existing = document.getElementById('status-modal');
+        if (existing) existing.remove();
+
+        const modal = document.createElement('div');
+        modal.id = 'status-modal';
+        modal.className = 'skill-modal'; // 流用
+        modal.style.zIndex = '2000';
+
+        modal.innerHTML = `
+            <h2>${enemy.name} のステータス</h2>
+            <div style="font-size: 1.2em; line-height: 2em; margin: 20px 0;">
+                <p>❤️ ライフ: ${enemy.currentHp} / ${enemy.maxHp}</p>
+                <p>⚔️ ちから: ${enemy.atk}</p>
+                <p>⏳ 次の攻撃まで: ${enemy.currentTimer} ターン</p>
+                <p>💫 属性: ${['赤', '緑', '黄', '青', '白', '黒'][enemy.element]}</p>
+            </div>
+            <button class="close-btn">閉じる</button>
+        `;
+
+        modal.querySelector('.close-btn').onclick = () => modal.remove();
+        document.body.appendChild(modal);
     }
 
     async processTurn() {
         this.isProcessing = true;
         try {
-            this.heroMultiplier = 1.0; // 勇者スキル用倍率
+            this.heroMultiplier = 1.0;
 
             let comboCount = 0;
-            let totalDamage = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }; // 0-5 for damage types. 6 is Heart.
+            let totalDamage = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
             let totalHeal = 0;
             let aoeFlags = { 0: false, 1: false, 2: false, 3: false, 4: false, 5: false };
 
-            // Track erased orbs by color for Guts
-            let erasedCounts = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+            // ガッツ加算用（自然発生のみ）と勇者スキル判定用（全消去分）
+            let gutsCounts = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+            let typeCounts = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
 
             // Loop matches/drops
             while (true) {
-                const groups = this.board.findMatchGroups(); // [[{r,c},...], ...]
+                const groups = this.board.findMatchGroups();
                 if (groups.length === 0) break;
 
-                // Sequential processing of combos in this wave
                 for (const group of groups) {
                     comboCount++;
                     this.audio.playMatchSE(comboCount);
 
-                    // Add to stats
                     const type = group.type;
                     const count = group.coords.length;
 
-                    // 勇者スキル判定 (全モンスター共通: リーダーと同色5個消しで倍率)
+                    // 勇者スキル判定 (タイプ1: モノリス等)
                     const hero = this.party[0];
-                    if (hero && type === hero.element) {
-                        // モノリス固有: 3倍/5倍
-                        if (hero.name === 'モノリス') {
-                            if (count >= 5) this.heroMultiplier = Math.max(this.heroMultiplier, 3.0);
-                            if (count >= 6) this.heroMultiplier = Math.max(this.heroMultiplier, 5.0);
-                        } else {
-                            // 汎用勇者スキル: 同色5個消しで2倍 (User Requirement: Assign unique to all, but for now generic)
-                            if (count >= 5) this.heroMultiplier = Math.max(this.heroMultiplier, 2.0);
-                        }
+                    if (hero && hero.heroSkillType === 1) {
+                        const mult = hero.heroSkill.calc(type, count);
+                        this.heroMultiplier = Math.max(this.heroMultiplier, mult);
                     }
 
                     if (type === ELEMENTS.HEART) {
                         totalHeal += 100 * (count / 3);
-                    } else if (type <= 5) { // Damage types
+                    } else if (type <= 5) {
                         totalDamage[type] += 10 * (count / 3);
                         if (count >= CONFIG.aoeThreshold) {
                             aoeFlags[type] = true;
                         }
                     }
 
-                    // スキル生成でないドロップのみガッツ加算用にカウント
+                    // ガッツ用と属性数判定用をカウント
+                    typeCounts[type] += group.coords.length;
                     const naturalOrbs = group.coords.filter(({ r, c }) => !this.board.grid[r][c].isSkillGenerated);
-                    erasedCounts[type] += naturalOrbs.length;
+                    gutsCounts[type] += naturalOrbs.length;
 
-                    // コンボ表示更新
                     this.updateComboUI(comboCount);
-
                     await this.board.fadeOrbs(group.coords);
                 }
 
                 await this.board.removeAndDrop(groups);
-                await new Promise(r => setTimeout(r, 400)); // Drop animation wait
+                await new Promise(r => setTimeout(r, 400));
             }
 
-            // コンボに応じた倍率計算
             const comboMultiplier = 1.0 + (comboCount - 1) * 0.05;
             let finalMultiplier = comboMultiplier;
+            if (comboCount >= 7) finalMultiplier *= 2.0;
 
-            // 7コンボボーナス (攻撃力2倍)
-            if (comboCount >= 7) {
-                finalMultiplier *= 2.0;
-            }
-
-            // Apply Results
             if (comboCount > 0) {
-                // 勇者スキルメッセージ
+                // 勇者スキル倍率計算 (タイプ2: ガリ等 / タイプ3)
+                const hero = this.party[0];
+                if (hero) {
+                    if (hero.heroSkillType === 2) {
+                        const uniqueTypes = new Set(Object.keys(typeCounts).filter(t => typeCounts[t] > 0 && parseInt(t) <= 5));
+                        const hasHeart = typeCounts[ELEMENTS.HEART] > 0;
+                        const count = uniqueTypes.size;
+                        let mult = 1.0;
+                        if (count === 3) mult = 2.0;
+                        else if (count === 4) mult = 3.0;
+                        else if (count >= 5) mult = (hasHeart ? 7.0 : 5.0);
+                        this.heroMultiplier = mult;
+                    } else if (hero.heroSkillType === 3) {
+                        let mult = 1.0;
+                        if (comboCount >= 10) mult = 10.0;
+                        else if (comboCount >= 7) mult = 6.0;
+                        else if (comboCount >= 3) mult = 2.0;
+                        this.heroMultiplier = mult;
+                    }
+                }
+
                 if (this.heroMultiplier > 1.0) {
                     this.showDamageText(`勇者パワー x${this.heroMultiplier}!`, '#ffd700', document.getElementById('battle-area'));
                 }
@@ -1696,30 +1938,22 @@ class Game {
                     this.showDamageText(`7 COMBO BONUS x2!`, '#ff3366', document.getElementById('battle-area'));
                 }
 
-                // Guts Accumulation (Per Element)
-                this.addGutsToParty(erasedCounts);
+                this.addGutsToParty(gutsCounts);
 
-                // Heal
                 if (totalHeal > 0) {
                     this.heal(Math.floor(totalHeal * comboMultiplier));
                 }
 
-                // Attack (勇者スキルとコンボ倍率を統合)
                 await this.playerAttack(totalDamage, finalMultiplier * this.heroMultiplier, aoeFlags);
 
-                // コンボ表示を消す
                 setTimeout(() => {
                     this.comboDisplay.classList.add('hidden');
                 }, 1000);
 
-                // 状態変化チェック (コンボ数依存)
                 this.checkStatusByCombo(comboCount);
             }
 
-            // 状態変化ターン減少
             this.tickStatusTurns();
-
-            // Check Clear (スキルによる撃破も含めてここで統合チェック)
             await this.checkLevelClear();
         } catch (e) {
             console.error("Turn Error:", e);
@@ -1746,7 +1980,7 @@ class Game {
         if (this.enemies.length === 0 && !this.isLevelClearing) {
             this.isLevelClearing = true;
             // 階層クリア時に憤怒リセット
-            this.party.forEach(m => {
+            this.party.filter(p => p).forEach(m => {
                 if (m.status === '憤怒') {
                     m.extraAtk = 0;
                 }
@@ -1754,6 +1988,10 @@ class Game {
             this.audio.playClearSE();
             await new Promise(r => setTimeout(r, 1000));
             this.floor++; // Increment floor here
+
+            // Auto-Save every floor
+            this.saveGame();
+
             this.startLevel();
             this.isLevelClearing = false;
         } else if (this.enemies.length > 0 && isTurnEnd) {
@@ -1895,13 +2133,12 @@ class Game {
                 setTimeout(() => enemy.el.classList.remove('shake'), 500);
 
                 const dmg = enemy.atk;
-                let finalDmg = dmg;
+                let finalDmg = Math.floor(dmg * this.damageShield);
 
                 // 根性チェック
-                const monolith = this.party.find(m => m.name === 'モノリス');
-                if (monolith && monolith.status === '根性' && this.playerHp <= dmg) {
-                    finalDmg = this.playerHp - 1;
-                    if (finalDmg < 0) finalDmg = 0;
+                const monolith = this.party.find(m => m && m.name === 'モノリス');
+                if (monolith && monolith.status === '根性' && this.playerHp <= finalDmg) {
+                    finalDmg = Math.max(0, this.playerHp - 1);
                     if (this.playerHp > 1) {
                         this.showDamageText('Gut!', 'gold', monolith.el);
                         // 発動したので解除
@@ -1910,6 +2147,11 @@ class Game {
                 }
 
                 this.playerHp = Math.max(0, this.playerHp - finalDmg);
+
+                // 被バーストダメージ時の軽減リセット
+                if (this.damageShield < 1.0) {
+                    this.damageShield = 1.0;
+                }
                 this.updateHpUI();
 
                 this.audio.playDamageSE();
@@ -1951,10 +2193,13 @@ class Game {
         div.style.textShadow = '2px 2px 0 #000';
 
         const rect = targetEl.getBoundingClientRect();
-        div.style.left = (rect.left + rect.width / 2) + 'px';
-        div.style.top = (rect.top) + 'px';
+        const container = document.getElementById('game-container');
+        const containerRect = container.getBoundingClientRect();
 
-        document.body.appendChild(div);
+        div.style.left = (rect.left - containerRect.left + rect.width / 2) + 'px';
+        div.style.top = (rect.top - containerRect.top) + 'px';
+
+        container.appendChild(div);
         setTimeout(() => div.remove(), 1000);
     }
 
@@ -2079,7 +2324,10 @@ class Game {
 
     tickStatusTurns() {
         this.party.forEach(m => {
-            if (m.status && m.status !== '根性') {
+            // m might be null or undefined if filtered? 
+            // processTurn filters active members?
+            // Wait, this.party in Game is the filtered array.
+            if (m && m.status && m.status !== '根性') {
                 m.statusTurns--;
                 if (m.statusTurns <= 0) {
                     this.removeStatus(m);
@@ -2092,6 +2340,30 @@ class Game {
             this.board.moveTimeBonus--;
             if (this.board.moveTimeBonus === 0) {
                 this.showDamageText('操作時間延長終了!', '#fff', document.getElementById('board-area'));
+            }
+        }
+        this.updateTimerIcon();
+    }
+
+    updateTimerIcon() {
+        let icon = document.getElementById('timer-icon');
+        if (!icon) {
+            // Lazy create
+            const bagBtn = document.getElementById('item-bag-btn');
+            if (bagBtn && bagBtn.parentNode) {
+                icon = document.createElement('div');
+                icon.id = 'timer-icon';
+                icon.className = 'timer-icon hidden';
+                icon.innerHTML = '⏱️'; // Clock emoji
+                // Styling will be handled in CSS, basically absolute below bag button
+                bagBtn.parentNode.appendChild(icon);
+            }
+        }
+        if (icon) {
+            if (this.board.moveTimeBonus > 0) {
+                icon.classList.remove('hidden');
+            } else {
+                icon.classList.add('hidden');
             }
         }
     }
@@ -2124,30 +2396,52 @@ class Game {
         const bagBtn = document.getElementById('item-bag-btn');
         const closeBagBtn = document.getElementById('close-bag-btn');
         const closeShopBtn = document.getElementById('close-shop-btn');
+        const shopTeamBtn = document.getElementById('shop-team-btn');
 
         bagBtn.onclick = () => this.showBag();
         closeBagBtn.onclick = () => this.bagOverlay.classList.add('hidden');
         closeShopBtn.onclick = () => {
             this.shopOverlay.classList.add('hidden');
+
+            // Fix: ショップでの合体や編成変更を戦場に同期
+            // 1. 合体素材等でいなくなったパーティ枠を掃除
+            this.party = this.party.filter(m => m !== null);
+
+            // 2. 最大HPの再計算とアイコンの再描画
+            this.playerMaxHp = this.party.reduce((sum, m) => sum + m.maxHp, 0);
+            this.playerHp = Math.min(this.playerHp, this.playerMaxHp); // 最大値を超えないよう補正
+
+            this.renderPartyUI();
+            this.updateHpUI();
+
             this.spawnEnemies();
             this.changeBackground();
             this.audio.startBGM('battle'); // 戦闘曲に復帰
         };
+
+        if (shopTeamBtn) {
+            shopTeamBtn.onclick = () => {
+                this.openTeamSelect(true); // Open from shop
+            };
+        }
     }
 
     showShop(hasGacha = false) {
-        this.audio.startBGM('peace'); // 商人登場時は平和な曲に
+        this.audio.startBGM('peace');
         this.shopOverlay.classList.remove('hidden');
         this.shopItemsEl.innerHTML = '';
 
-        // 所持金表示エリアを追加
         const scoreInfo = document.createElement('div');
         scoreInfo.className = 'shop-score-info';
         scoreInfo.textContent = `所持金: ${this.score} G`;
         this.shopItemsEl.appendChild(scoreInfo);
 
-        // ガチャボタン (10階層毎)
+        // Gacha (10 floors)
         if (hasGacha) {
+            // Cost scale: 5000, 10000, 20000...
+            // 1st time (gachaCount 0) -> 5000.
+            const cost = 5000 * Math.pow(2, this.gachaCount);
+
             const gachaDiv = document.createElement('div');
             gachaDiv.className = 'shop-item';
             gachaDiv.style.background = 'linear-gradient(45deg, #333, #444)';
@@ -2155,57 +2449,198 @@ class Game {
             gachaDiv.innerHTML = `
                 <div class="item-info">
                     <div class="item-name" style="color:#ffd700">★ モンスターガチャ (5連)</div>
-                    <div class="item-desc">新たな仲間を召喚する！ (5000G)</div>
-                    <div class="item-price">5000 G</div>
+                    <div class="item-desc">新たな仲間を召喚する！</div>
+                    <div class="item-price">${cost.toLocaleString()} G</div>
                 </div>
-                <button class="buy-btn" ${this.score < 5000 ? 'disabled' : ''}>回す</button>
+                <button class="buy-btn" ${this.score < cost ? 'disabled' : ''}>回す</button>
             `;
             const gachaBtn = gachaDiv.querySelector('.buy-btn');
             gachaBtn.onclick = () => {
-                if (this.score >= 5000) {
-                    this.score -= 5000;
+                if (this.score >= cost) {
+                    this.score -= cost;
                     this.scoreEl.textContent = this.score;
                     scoreInfo.textContent = `所持金: ${this.score} G`;
-
-                    // Close Shop and Trigger Gacha
                     this.shopOverlay.classList.add('hidden');
-                    this.drawGacha(5, false); // Not initial
+                    this.drawGacha(5, false);
                 }
             };
             this.shopItemsEl.appendChild(gachaDiv);
+
+            // FUSION Option (Only when merchant appears - same timing as Gacha)
+            const fusionDiv = document.createElement('div');
+            fusionDiv.className = 'shop-item';
+            fusionDiv.style.border = '2px solid #ff44ff';
+            fusionDiv.innerHTML = `
+                <div class="item-info">
+                    <div class="item-name" style="color:#ff44ff">◆ モンスター合体</div>
+                    <div class="item-desc">同じモンスターを合体して強化</div>
+                    <div class="item-price">500 G / 回</div>
+                </div>
+                <button class="buy-btn">合体へ</button>
+            `;
+            const fusionBtn = fusionDiv.querySelector('.buy-btn');
+            fusionBtn.onclick = () => {
+                this.showFusionMenu();
+            };
+            this.shopItemsEl.appendChild(fusionDiv);
         }
 
-        // アイテムを3つランダムに選ぶ（重複ありでOKとする）
-        const itemIds = Object.keys(ITEMS);
-        for (let i = 0; i < 3; i++) {
-            const id = itemIds[Math.floor(Math.random() * itemIds.length)];
-            const item = ITEMS[id];
+        // Standard Items (Persist if same floor)
+        if (this.shopFloor !== this.floor || !this.shopItemsCache || this.shopItemsCache.length === 0) {
+            // Generate new items
+            this.shopFloor = this.floor;
+            this.shopItemsCache = [];
+            const itemIds = Object.keys(ITEMS);
+            // Allow duplicates logic preserved
+            for (let i = 0; i < 3; i++) {
+                const id = itemIds[Math.floor(Math.random() * itemIds.length)];
+                this.shopItemsCache.push({ id: id, bought: false });
+            }
+        }
 
+        // Render Cached Items
+        this.shopItemsCache.forEach((cacheItem, index) => {
+            const item = ITEMS[cacheItem.id];
             const div = document.createElement('div');
             div.className = 'shop-item';
+
+            let btnHtml = `<button class="buy-btn" ${this.score < item.price ? 'disabled' : ''}>購入</button>`;
+            if (cacheItem.bought) {
+                btnHtml = `<button class="buy-btn" disabled>済</button>`;
+            }
+
             div.innerHTML = `
                 <div class="item-info">
                     <div class="item-name">${item.name}</div>
                     <div class="item-desc">${item.desc}</div>
                     <div class="item-price">${item.price} G</div>
                 </div>
-                <button class="buy-btn" ${this.score < item.price ? 'disabled' : ''}>購入</button>
-            `;
+                ${btnHtml}
+             `;
 
             const buyBtn = div.querySelector('.buy-btn');
-            buyBtn.onclick = () => {
-                if (this.score >= item.price) {
-                    this.score -= item.price;
-                    this.scoreEl.textContent = this.score;
-                    scoreInfo.textContent = `所持金: ${this.score} G`; // モーダル内の表示も更新
-                    this.inventory[id] = (this.inventory[id] || 0) + 1;
-                    buyBtn.disabled = true;
-                    buyBtn.textContent = '済';
-                    this.showDamageText('購入したぞ', '#ffd700', buyBtn);
+            if (!cacheItem.bought) {
+                buyBtn.onclick = () => {
+                    if (this.score >= item.price) {
+                        this.score -= item.price;
+                        this.scoreEl.textContent = this.score;
+                        scoreInfo.textContent = `所持金: ${this.score} G`;
+
+                        this.inventory[cacheItem.id] = (this.inventory[cacheItem.id] || 0) + 1;
+
+                        cacheItem.bought = true; // Update cache
+                        buyBtn.disabled = true;
+                        buyBtn.textContent = '済';
+                        this.showDamageText('まいどあり', '#ffd700', buyBtn);
+                    }
+                };
+            }
+            this.shopItemsEl.appendChild(div);
+        });
+    }
+
+    showFusionMenu() {
+        // Find fusible monsters
+        // Group by name
+        const groups = {};
+        this.ownedMonsters.forEach(m => {
+            if (!groups[m.name]) groups[m.name] = [];
+            groups[m.name].push(m);
+        });
+
+        const fusibleNames = Object.keys(groups).filter(name => groups[name].length >= 2);
+
+        this.shopItemsEl.innerHTML = '';
+
+        // Re-add Score Info
+        const scoreInfo = document.createElement('div');
+        scoreInfo.className = 'shop-score-info';
+        scoreInfo.textContent = `所持金: ${this.score} G`;
+        this.shopItemsEl.appendChild(scoreInfo);
+
+        const header = document.createElement('h3');
+        header.textContent = '合体させるモンスターを選択 (500G)';
+        header.style.textAlign = 'center';
+        this.shopItemsEl.appendChild(header);
+
+        const backBtn = document.createElement('button');
+        backBtn.textContent = '戻る';
+        backBtn.style.marginBottom = '10px';
+        backBtn.onclick = () => {
+            this.showShop((this.floor - 1) % 10 === 0); // Re-render Shop
+        };
+        this.shopItemsEl.appendChild(backBtn);
+
+        if (fusibleNames.length === 0) {
+            const msg = document.createElement('p');
+            msg.textContent = '合体できるモンスターがいません (同じモンスターが2体必要)';
+            msg.style.textAlign = 'center';
+            this.shopItemsEl.appendChild(msg);
+            return;
+        }
+
+        fusibleNames.forEach(name => {
+            const list = groups[name];
+            // Sort by rarity desc
+            list.sort((a, b) => b.rarity - a.rarity);
+
+            const base = list[0];
+            const material = list[1]; // Next highest
+
+            const div = document.createElement('div');
+            div.className = 'shop-item fusion-item';
+            div.innerHTML = `
+                <div class="fusion-monster-img">
+                    <img src="${IMAGE_PATH + base.img}" alt="${name}">
+                </div>
+                <div class="item-info">
+                    <div class="item-name">${name}</div>
+                    <div class="item-desc">ベース: ★${base.rarity} + 素材: ★${material.rarity} -> ★${base.rarity + material.rarity}</div>
+                </div>
+                <button class="buy-btn" ${this.score < 500 ? 'disabled' : ''}>あわせる</button>
+            `;
+
+            const btn = div.querySelector('.buy-btn');
+            btn.onclick = () => {
+                if (this.score >= 500) {
+                    // Fuse
+                    if (base.rarity >= 10) {
+                        alert("これ以上強化できません");
+                        return;
+                    }
+
+                    this.score -= 500;
+                    // Update LOCAL scoreInfo
+                    scoreInfo.textContent = `所持金: ${this.score} G`;
+
+                    // Logic: sum rarities
+                    base.rarity += material.rarity;
+                    if (base.rarity > 10) base.rarity = 10;
+
+                    // Update stats
+                    const baseStats = RARITY_STATS[base.rarity] || { hp: base.maxHp + (material.rarity * 150), atk: base.atk + (material.rarity * 50) };
+                    base.maxHp = baseStats.hp;
+                    base.atk = baseStats.atk;
+                    base.currentHp = base.maxHp;
+
+                    // Remove material
+                    const idx = this.ownedMonsters.indexOf(material);
+                    if (idx > -1) this.ownedMonsters.splice(idx, 1);
+
+                    // Remove from party if material was in party
+                    const partyIdx = this.party.indexOf(material);
+                    if (partyIdx > -1) this.party[partyIdx] = null; // Clear slot
+
+                    this.showDamageText('合体成功!', '#ff44ff', btn);
+
+                    // Refresh Fusion Menu
+                    this.showFusionMenu();
+                } else {
+                    alert("お金が足りません");
                 }
             };
             this.shopItemsEl.appendChild(div);
-        }
+        });
     }
 
     showBag() {
@@ -2250,6 +2685,7 @@ class Game {
         switch (id) {
             case 'hourglass':
                 this.board.moveTimeBonus = 3;
+                this.updateTimerIcon();
                 this.showDamageText('操作時間2倍(3T)!', '#fff', this.partyContainer);
                 break;
             case 'oil':

@@ -90,11 +90,13 @@ class AudioController {
 
         // 曲調の設定
         const isBattle = type === 'battle';
-        const tempo = isBattle ? 0.15 : 0.4; // 戦闘は速く
+        const isGacha = type === 'gacha';
+        const tempo = isGacha ? 0.1 : (isBattle ? 0.15 : 0.4);
 
         // メロディ定義
-        const peaceSequence = [110, 110, 146.83, 146.83, 164.81, 164.81, 146.83, 110]; // 以前のベースライン
-        const battleSequence = [55, 55, 55, 82.41, 55, 55, 73.42, 65.41]; // 低いAから始まる激しいライン
+        const peaceSequence = [110, 110, 146.83, 146.83, 164.81, 164.81, 146.83, 110];
+        const battleSequence = [55, 55, 55, 82.41, 55, 55, 73.42, 65.41];
+        const gachaSequence = [220, 277.18, 329.63, 440, 415.30, 329.63, 277.18, 220]; // A Major Arpeggio-ish
         const melodySequence = isBattle ? [220, 246.94, 261.63, 293.66, 329.63, 349.23, 392, 440] : [];
 
         let noteIndex = 0;
@@ -104,12 +106,17 @@ class AudioController {
 
             const now = this.ctx.currentTime;
 
-            // ベース音
+            // ベース・リズム音
             const bassOsc = this.ctx.createOscillator();
             const bassGain = this.ctx.createGain();
-            bassOsc.type = isBattle ? 'sawtooth' : 'triangle';
-            bassOsc.frequency.setValueAtTime(isBattle ? battleSequence[noteIndex % 8] : peaceSequence[noteIndex % 8], now);
-            bassGain.gain.setValueAtTime(isBattle ? 0.04 : 0.05, now);
+            bassOsc.type = isBattle ? 'sawtooth' : (isGacha ? 'square' : 'triangle');
+
+            let freq = peaceSequence[noteIndex % 8];
+            if (isBattle) freq = battleSequence[noteIndex % 8];
+            if (isGacha) freq = gachaSequence[noteIndex % 8];
+
+            bassOsc.frequency.setValueAtTime(freq, now);
+            bassGain.gain.setValueAtTime(isBattle ? 0.04 : (isGacha ? 0.03 : 0.05), now);
             bassGain.gain.linearRampToValueAtTime(0, now + tempo);
             bassOsc.connect(bassGain);
             bassGain.connect(this.ctx.destination);
@@ -137,6 +144,19 @@ class AudioController {
         };
 
         playNextNote();
+    }
+
+    playGachaShakeSE() {
+        this.playTone(220, 'triangle', 0.1, 0.1);
+        setTimeout(() => this.playTone(330, 'triangle', 0.1, 0.1), 50);
+    }
+
+    playGachaBreakSE() {
+        // Impact + Shine
+        this.playTone(110, 'square', 0.3, 0.3);
+        [880, 1320, 1760].forEach((f, i) => {
+            setTimeout(() => this.playTone(f, 'sine', 0.4, 0.1), i * 50);
+        });
     }
 
     stopBGM() {
