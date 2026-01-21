@@ -2393,108 +2393,120 @@ class Game {
         });
     }
 
-    showFusionMenu() {
-        // Find fusible monsters
-        // Group by name
-        const groups = {};
-        this.ownedMonsters.forEach(m => {
-            if (!groups[m.name]) groups[m.name] = [];
-            groups[m.name].push(m);
-        });
-
-        const fusibleNames = Object.keys(groups).filter(name => groups[name].length >= 2);
-
+    showFusionMenu(step = 'select_base', baseMonster = null) {
         this.shopItemsEl.innerHTML = '';
 
-        // Re-add Score Info
+        // Score Info
         const scoreInfo = document.createElement('div');
         scoreInfo.className = 'shop-score-info';
         scoreInfo.textContent = `所持金: ${this.score} G`;
         this.shopItemsEl.appendChild(scoreInfo);
 
         const header = document.createElement('h3');
-        header.textContent = '合体させるモンスターを選択 (500G)';
         header.style.textAlign = 'center';
+        header.style.marginBottom = '10px';
         this.shopItemsEl.appendChild(header);
 
         const backBtn = document.createElement('button');
         backBtn.textContent = '戻る';
         backBtn.style.marginBottom = '10px';
         backBtn.onclick = () => {
-            this.showShop((this.floor - 1) % 10 === 0); // Re-render Shop
+            if (step === 'select_base') {
+                this.showShop((this.floor - 1) % 10 === 0);
+            } else {
+                this.showFusionMenu('select_base');
+            }
         };
         this.shopItemsEl.appendChild(backBtn);
 
-        if (fusibleNames.length === 0) {
-            const msg = document.createElement('p');
-            msg.textContent = '合体できるモンスターがいません (同じモンスターが2体必要)';
-            msg.style.textAlign = 'center';
-            this.shopItemsEl.appendChild(msg);
+        const container = document.createElement('div');
+        container.className = 'fusion-list-container';
+        this.shopItemsEl.appendChild(container);
+
+        if (step === 'select_base') {
+            header.textContent = 'ベースにするモンスターを選択';
+
+            // すべての所持モンスターを表示（レアリティ10未満かつ、同じ種類が2体以上いるもの）
+            const counts = {};
+            this.ownedMonsters.forEach(m => counts[m.name] = (counts[m.name] || 0) + 1);
+
+            const list = this.ownedMonsters.filter(m => m.rarity < 10 && counts[m.name] >= 2);
+
+            if (list.length === 0) {
+                const msg = document.createElement('p');
+                msg.textContent = '合体できるモンスターがいません';
+                msg.style.textAlign = 'center';
+                container.appendChild(msg);
+            } else {
+                list.forEach(m => {
+                    const card = this.createFusionCard(m);
+                    card.onclick = () => this.showFusionMenu('select_material', m);
+                    container.appendChild(card);
+                });
+            }
+        } else if (step === 'select_material') {
+            header.textContent = `素材にするモンスターを選択 (ベース: ${baseMonster.name} ★${baseMonster.rarity})`;
+
+            // ベースと同じ種類で、ベース自身ではないモンスターを表示
+            const list = this.ownedMonsters.filter(m => m.name === baseMonster.name && m !== baseMonster);
+
+            list.forEach(m => {
+                const card = this.createFusionCard(m);
+                card.onclick = () => this.confirmFusion(baseMonster, m);
+                container.appendChild(card);
+            });
+        }
+    }
+
+    createFusionCard(monster) {
+        const div = document.createElement('div');
+        div.className = 'shop-item fusion-item-card';
+        div.innerHTML = `
+            <div class="fusion-monster-img">
+                <img src="${IMAGE_PATH + monster.img}" alt="${monster.name}">
+            </div>
+            <div class="item-info">
+                <div class="item-name">${monster.name}</div>
+                <div class="item-desc">★${monster.rarity}</div>
+            </div>
+        `;
+        return div;
+    }
+
+    confirmFusion(base, material) {
+        if (this.score < 500) {
+            alert("お金が足りません (500G必要です)");
             return;
         }
 
-        fusibleNames.forEach(name => {
-            const list = groups[name];
-            // Sort by rarity desc
-            list.sort((a, b) => b.rarity - a.rarity);
+        const nextRarity = Math.min(10, base.rarity + material.rarity);
+        if (!confirm(`${base.name} ★${base.rarity} に ${material.name} ★${material.rarity} を合体させますか？\n(結果: ★${nextRarity} / 費用: 500G)`)) {
+            return;
+        }
 
-            const base = list[0];
-            const material = list[1]; // Next highest
+        this.score -= 500;
+        this.scoreEl.textContent = this.score;
 
-            const div = document.createElement('div');
-            div.className = 'shop-item fusion-item';
-            div.innerHTML = `
-                <div class="fusion-monster-img">
-                    <img src="${IMAGE_PATH + base.img}" alt="${name}">
-                </div>
-                <div class="item-info">
-                    <div class="item-name">${name}</div>
-                    <div class="item-desc">ベース: ★${base.rarity} + 素材: ★${material.rarity} -> ★${base.rarity + material.rarity}</div>
-                </div>
-                <button class="buy-btn" ${this.score < 500 ? 'disabled' : ''}>あわせる</button>
-            `;
+        // 合体処理
+        base.rarity = nextRarity;
 
-            const btn = div.querySelector('.buy-btn');
-            btn.onclick = () => {
-                if (this.score >= 500) {
-                    // Fuse
-                    if (base.rarity >= 10) {
-                        alert("これ以上強化できません");
-                        return;
-                    }
+        // ステータス更新
+        const baseStats = RARITY_STATS[base.rarity] || { hp: base.maxHp + (material.rarity * 150), atk: base.atk + (material.rarity * 50) };
+        base.maxHp = baseStats.hp;
+        base.atk = baseStats.atk;
+        base.currentHp = base.maxHp;
 
-                    this.score -= 500;
-                    // Update LOCAL scoreInfo
-                    scoreInfo.textContent = `所持金: ${this.score} G`;
+        // 素材削除
+        const idx = this.ownedMonsters.indexOf(material);
+        if (idx > -1) this.ownedMonsters.splice(idx, 1);
 
-                    // Logic: sum rarities
-                    base.rarity += material.rarity;
-                    if (base.rarity > 10) base.rarity = 10;
+        // パーティから削除
+        const partyIdx = this.party.indexOf(material);
+        if (partyIdx > -1) this.party[partyIdx] = null;
 
-                    // Update stats
-                    const baseStats = RARITY_STATS[base.rarity] || { hp: base.maxHp + (material.rarity * 150), atk: base.atk + (material.rarity * 50) };
-                    base.maxHp = baseStats.hp;
-                    base.atk = baseStats.atk;
-                    base.currentHp = base.maxHp;
-
-                    // Remove material
-                    const idx = this.ownedMonsters.indexOf(material);
-                    if (idx > -1) this.ownedMonsters.splice(idx, 1);
-
-                    // Remove from party if material was in party
-                    const partyIdx = this.party.indexOf(material);
-                    if (partyIdx > -1) this.party[partyIdx] = null; // Clear slot
-
-                    this.showDamageText('合体成功!', '#ff44ff', btn);
-
-                    // Refresh Fusion Menu
-                    this.showFusionMenu();
-                } else {
-                    alert("お金が足りません");
-                }
-            };
-            this.shopItemsEl.appendChild(div);
-        });
+        alert("合体成功！");
+        this.saveGame();
+        this.showFusionMenu('select_base');
     }
 
     showBag() {
