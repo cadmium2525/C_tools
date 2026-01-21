@@ -1,154 +1,5 @@
-/*
-    Pazumono Game Logic
-*/
-
-// --- Constants & Config ---
-const CONFIG = {
-    cols: 6,
-    rows: 5,
-    orbTypes: 7, // 0:Red, 1:Green, 2:Yellow, 3:Blue, 4:White, 5:Black, 6:Heart
-    moveTime: 6000, // 6 seconds
-    aoeThreshold: 5, // 5+ match
-    shopInterval: 5  // 5 floors
-};
-
-const ELEMENTS = {
-    RED: 0, GREEN: 1, YELLOW: 2, BLUE: 3, WHITE: 4, BLACK: 5, HEART: 6
-};
-
-const GACHA_CONFIG = {
-    PROBABILITY: { 1: 60, 2: 25, 3: 15 }, // Star 1-3 only from Gacha
-    COST: 5000,
-    BATCH_COST: 5000 // 5-pull
-};
-
-const RARITY_STATS = {
-    1: { hp: 150, atk: 80 },
-    2: { hp: 250, atk: 120 },
-    3: { hp: 350, atk: 200 }
-};
-
-// Calculate stats for higher rarities (Linear interpolation approximation)
-for (let r = 4; r <= 10; r++) {
-    RARITY_STATS[r] = {
-        hp: RARITY_STATS[3].hp + (r - 3) * 150,
-        atk: RARITY_STATS[3].atk + (r - 3) * 50
-    };
-}
-
-
-const ITEMS = {
-    'hourglass': { name: '砂時計', price: 3000, desc: '3ターンの間操作時間が2倍になる' },
-    'oil': { name: 'オイリーオイル', price: 4000, desc: 'ライフを50％回復する' },
-    'red_crystal': { name: '赤の水晶', price: 500, desc: '赤オーラのモンスターのガッツを20回復する', element: ELEMENTS.RED },
-    'green_crystal': { name: '緑の水晶', price: 500, desc: '緑オーラのモンスターのガッツを20回復する', element: ELEMENTS.GREEN },
-    'yellow_crystal': { name: '黄の水晶', price: 500, desc: '黄オーラのモンスターのガッツを20回復する', element: ELEMENTS.YELLOW },
-    'blue_crystal': { name: '青の水晶', price: 500, desc: '青オーラのモンスターのガッツを20回復する', element: ELEMENTS.BLUE },
-    'white_crystal': { name: '白の水晶', price: 500, desc: '白オーラのモンスターのガッツを20回復する', element: ELEMENTS.WHITE },
-    'black_crystal': { name: '黒の水晶', price: 500, desc: '黒オーラのモンスターのガッツを20回復する', element: ELEMENTS.BLACK }
-};
-
-const MONSTER_SKILLS = {
-    'ヒノトリ': [
-        { name: 'フレイムライン', cost: 25, type: 'damage_row', val: 500, row: 'center', color: ELEMENTS.RED, desc: '敵単体に中ダメージ＋盤面中央横一列を赤ディスクに変換' },
-        { name: 'ファイアウェーブ', cost: 43, type: 'convert_dual', color1: ELEMENTS.RED, color2: ELEMENTS.HEART, desc: '全ディスクを赤ディスクと回復ディスクに変換' }
-    ],
-    'モノリス': [
-        { name: '大たおれこみ', cost: 18, type: 'damage_shield', val: 300, shield: 0.5, desc: '敵単体に小ダメージ＋次のターンまでダメージを軽減' },
-        { name: 'オーロラゲート', cost: 34, type: 'damage_convert', val: 1000, from: ELEMENTS.WHITE, to: ELEMENTS.BLACK, desc: '敵全体に大ダメージ＋白ディスクを黒ディスクに変換' }
-    ],
-    'プラント': [
-        { name: 'ミツ', cost: 26, type: 'delay', delay: 1, desc: '敵1体の行動を1ターン遅らせる' },
-        { name: 'フラワービーム', cost: 42, type: 'damage_spawn', val: 800, spawnColor: ELEMENTS.GREEN, spawnCount: 8, target: 'all', desc: '敵全体に大ダメージ＋緑ディスクを8個生成' }
-    ],
-    'ウンディーネ': [
-        { name: 'アクアウェイブ', cost: 19, type: 'spawn', spawnColor: ELEMENTS.BLUE, spawnCount: 6, desc: '青ディスクを6個生成' },
-        { name: 'クリスタルアロー', cost: 37, type: 'damage_col_convert', val: 800, target: 'all', color: ELEMENTS.BLUE, desc: '敵全体に大ダメージ＋左右の端の列を青ディスクに変換' }
-    ],
-    'スエゾー': [
-        { name: 'なめる', cost: 22, type: 'damage_delay', val: 300, delay: 1, desc: '敵1体に小ダメージ＋1ターン遅延' },
-        { name: 'ベロビンタ', cost: 35, type: 'damage_delay', val: 600, delay: 1, desc: '中ダメージ＋1ターン遅延' }
-    ],
-    'ガリ': [
-        { name: 'ナックル', cost: 18, type: 'damage_spawn', val: 300, spawnColor: ELEMENTS.WHITE, spawnCount: 1, desc: '敵単体に小ダメージ＋白ディスクを1個生成' },
-        { name: 'ゴッドライジング', cost: 40, type: 'variable_damage_ensure', val: 250, desc: '盤面の色の数に応じて大ダメージ＋全色3つ以上になるように生成' }
-    ]
-};
-
+// Constants moved to data.js
 const IMAGE_PATH = 'images/';
-
-const SKILLS = {
-    // Monol (Black)
-    'dai_taorekomi': { name: '大たおれこみ', desc: '敵単体に小ダメージ', cost: 18, type: 'damage', val: 50 },
-    'aurora_gate': { name: 'オーロラゲート', desc: '敵単体に大ダメージ', cost: 34, type: 'damage', val: 200 },
-
-    // Hinotori (Red)
-    'flame_line': { name: 'フレイムライン', desc: '敵単体に中ダメージ', cost: 25, type: 'damage', val: 100 },
-    'fire_wave': { name: 'ファイアウェーブ', desc: '全ディスクを火属性に変換', cost: 43, type: 'convert', color: ELEMENTS.RED },
-
-    // Plant (Green)
-    'mitsu': { name: 'ミツ', desc: '全敵の行動を3ターン遅らせる', cost: 26, type: 'delay', delay: 3 },
-    'flower_beam': { name: 'フラワービーム', desc: '大ダメージ＋木ディスクを生成', cost: 42, type: 'damage_spawn', val: 200, spawnColor: ELEMENTS.GREEN, spawnCount: 6 },
-
-    // Undine (Blue)
-    'aqua_wave': { name: 'アクアウェイブ', desc: '水ディスクを6個生成', cost: 19, type: 'spawn', spawnColor: ELEMENTS.BLUE, spawnCount: 6 },
-    'crystal_arrow': { name: 'クリスタルアロー', desc: '敵単体に大ダメージ', cost: 37, type: 'damage', val: 200 },
-
-    // Suezo (Yellow)
-    'nameru': { name: 'なめる', desc: '小ダメージ＋1ターン遅延', cost: 22, type: 'damage_delay', val: 50, delay: 1 },
-    'berobinta': { name: 'ベロビンタ', desc: '中ダメージ＋1ターン遅延', cost: 35, type: 'damage_delay', val: 100, delay: 1 },
-
-    // Gali (White)
-    'knuckle': { name: 'ナックル', desc: '敵単体に小ダメージ', cost: 18, type: 'damage', val: 50 },
-    'god_rising': { name: 'ゴッドライジング', desc: '盤面の色の数に応じて大ダメージ', cost: 40, type: 'variable_damage', val: 100 }
-};
-
-const ALLY_DATA = [
-    { name: 'モノリス', img: 'モノリス.png', baseHp: 400, atk: 70, element: ELEMENTS.BLACK },
-    { name: 'ヒノトリ', img: 'ヒノトリ.png', baseHp: 300, atk: 90, element: ELEMENTS.RED },
-    { name: 'プラント', img: 'プラント.png', baseHp: 350, atk: 60, element: ELEMENTS.GREEN },
-    { name: 'ウンディーネ', img: 'ウンディーネ.png', baseHp: 250, atk: 80, element: ELEMENTS.BLUE },
-    { name: 'スエゾー', img: 'スエゾー.png', baseHp: 280, atk: 75, element: ELEMENTS.YELLOW },
-    { name: 'ガリ', img: 'ガリ.png', baseHp: 320, atk: 85, element: ELEMENTS.WHITE }
-];
-
-const MONSTER_SPECIES = [
-    'アローヘッド', 'アーク', 'イルミネ', 'ウンディーネ',
-    'カワズモー', 'ガリ', 'キジン', 'キュービ', 'グジラ',
-    'ケンタウロス', 'ゲル', 'ゴースト', 'ゴーレム', 'シンリュウ', 'ジョーカー',
-    'スエゾー', 'ディノ', 'デュラハン', 'ドラゴン', 'ナーガ', 'ニャー',
-    'ネンドロ', 'ハム', 'ヒノトリ', 'ピクシー', 'プラント', 'ヘンガー',
-    'メタルナー', 'モッチー', 'モノリス', 'ユグドラシル', 'ライガー', 'ワーム'
-];
-
-const ENEMY_IMAGES = MONSTER_SPECIES.map(name => name + '.png');
-
-
-const BACKGROUND_IMAGES = [
-    'bg_coast.png', 'bg_forest.png', 'bg_desert.png', 'bg_volcano.png', 'bg_snow.png'
-];
-
-// モンスターのオーラ定義
-const AURA_COLORS = {
-    '青': '#4444ff',
-    '赤': '#ff4444',
-    '黒': '#333333',
-    '白': '#ffffff',
-    '緑': '#44ff44',
-    '黄色': '#ffff44'
-};
-
-const MONSTER_AURAS = {
-    'アーク': '青', 'アローヘッド': '赤', 'イルミネ': '黒', 'ウンディーネ': '青',
-    'ガリ': '白', 'カワズモー': '緑', 'キジン': '黄色', 'キュービ': '白',
-    'グジラ': '青', 'ゲル': '青', 'ケンタウロス': '緑', 'ゴースト': '黄色',
-    'ゴーレム': '黒', 'ジョーカー': '黒', 'シンリュウ': '青', 'スエゾー': '黄色',
-    'ディノ': '緑', 'デュラハン': '白', 'ドラゴン': '赤', 'ナーガ': '黒',
-    'ニャー': '白', 'ネンドロ': '黄色', 'ハム': '黄色', 'ピクシー': '赤',
-    'ヒノトリ': '赤', 'プラント': '緑', 'ヘンガー': '黄色', 'メタルナー': '白',
-    'モッチー': '赤', 'モノリス': '黒', 'ユグドラシル': '緑', 'ライガー': '青',
-    'ワーム': '黄色'
-};
 
 // --- Classes ---
 
@@ -190,10 +41,9 @@ class Monster {
         if (data.element !== undefined) {
             this.element = data.element;
         } else {
-            // Assign random element if not defined (mostly for gacha results if we don't hold it)
-            // But we should hold element in Species Map ideally.
-            // For now random is handled below or passed in.
-            this.element = Math.floor(Math.random() * 6);
+            // Assign element from aura in data.js
+            const aura = MONSTER_AURAS[this.name] || '白';
+            this.element = AURA_TO_ELEMENT[aura] || ELEMENTS.WHITE;
         }
 
         this.turnTimer = Math.floor(Math.random() * 3) + 2;
@@ -1338,6 +1188,7 @@ class Game {
 
     startAdventure() {
         this.saveGame();
+        this.audio.startBGM('battle'); // Combat music
 
         // Reset Game State for Adventure
         this.playerMaxHp = this.party.reduce((sum, m) => sum + m.maxHp, 0);
@@ -1909,6 +1760,9 @@ class Game {
             let finalMultiplier = comboMultiplier;
             if (comboCount >= 7) finalMultiplier *= 2.0;
 
+            // ターンの開始時にシールドをリセット（既に敵の攻撃を受けた後のため）
+            // Note: スキルで貼られたシールドは維持される
+
             if (comboCount > 0) {
                 // 勇者スキル倍率計算 (タイプ2: ガリ等 / タイプ3)
                 const hero = this.party[0];
@@ -2148,10 +2002,6 @@ class Game {
 
                 this.playerHp = Math.max(0, this.playerHp - finalDmg);
 
-                // 被バーストダメージ時の軽減リセット
-                if (this.damageShield < 1.0) {
-                    this.damageShield = 1.0;
-                }
                 this.updateHpUI();
 
                 this.audio.playDamageSE();
@@ -2174,6 +2024,10 @@ class Game {
                 }
                 await new Promise(r => setTimeout(r, 600));
             }
+        }
+        // 敵全員の攻撃が終わったらシールドをリセット
+        if (this.damageShield < 1.0) {
+            this.damageShield = 1.0;
         }
     }
 
