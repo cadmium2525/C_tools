@@ -68,6 +68,10 @@ const MONSTER_SKILLS = {
     'ガリ': [
         { name: 'ナックル', cost: 18, type: 'damage_spawn', val: 300, spawnColor: ELEMENTS.WHITE, spawnCount: 1, desc: '敵単体に小ダメージ＋白ディスクを1個生成' },
         { name: 'ゴッドライジング', cost: 40, type: 'variable_damage_ensure', val: 250, desc: '盤面の色の数に応じて大ダメージ＋全色3つ以上になるように生成' }
+    ],
+    'イルミネ': [
+        { name: 'ヴェノムエッジ', cost: 17, type: 'spawn_dual', color1: ELEMENTS.BLACK, count1: 2, color2: ELEMENTS.HEART, count2: 2, desc: '黒ディスクを2個＋回復ディスクを2個生成' },
+        { name: 'レクイエムエンド', cost: 46, type: 'convert_dual', color1: ELEMENTS.BLACK, color2: ELEMENTS.HEART, desc: 'すべてのディスクを黒ディスクと回復ディスクに変換' }
     ]
 };
 

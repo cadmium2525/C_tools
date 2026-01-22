@@ -1,16 +1,16 @@
 :root {
     --orb-size: 55px;
-    /* 60pxから55pxに縮小して余裕を持たせる */
+    /* 60px縺九ｉ55px縺ｫ邵ｮ蟆上＠縺ｦ菴呵｣輔ｒ謖√◆縺帙ｋ */
     --board-cols: 6;
     --board-rows: 5;
     --primary-color: #333;
     --header-height: 40px;
     --status-height: 65px;
-    /* 80pxから65pxに縮封E*/
+    /* 80px縺九ｉ65px縺ｫ邵ｮ蟆・*/
     --board-height: calc(var(--orb-size) * var(--board-rows));
     --battle-height: 180px;
-    /* 少し縮封E*/
-    /* 残りのスペ�Eス */
+    /* 蟆代＠邵ｮ蟆・*/
+    /* 谿九ｊ縺ｮ繧ｹ繝壹・繧ｹ */
 }
 
 * {
@@ -18,7 +18,7 @@
     margin: 0;
     padding: 0;
     user-select: none;
-    /* チE��スト選択防止 */
+    /* 繝・く繧ｹ繝磯∈謚樣亟豁｢ */
     -webkit-user-select: none;
     -webkit-touch-callout: none;
 }
@@ -28,7 +28,7 @@ body {
     background-color: #1a1a1a;
     color: white;
     overflow: hidden;
-    /* スクロール防止 */
+    /* 繧ｹ繧ｯ繝ｭ繝ｼ繝ｫ髦ｲ豁｢ */
     display: flex;
     justify-content: center;
     height: 100vh;
@@ -49,20 +49,20 @@ body {
     position: relative;
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
     padding-bottom: env(safe-area-inset-bottom, 60px);
-    /* 20pxから60pxに増やしてナビゲーションバ�Eを回避 */
+    /* 20px縺九ｉ60px縺ｫ蠅励ｄ縺励※繝翫ン繧ｲ繝ｼ繧ｷ繝ｧ繝ｳ繝舌・繧貞屓驕ｿ */
 }
 
 /* Header */
 #game-header {
     height: 40px;
-    /* 50pxから40pxに縮封E*/
+    /* 50px縺九ｉ40px縺ｫ邵ｮ蟆・*/
     background-color: #111;
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 0 15px;
     font-size: 14px;
-    /* さらに小さぁE*/
+    /* 縺輔ｉ縺ｫ蟆上＆縺・*/
     font-weight: bold;
     border-bottom: 2px solid #555;
     position: relative;
@@ -98,7 +98,7 @@ body {
     flex: 1;
     /* flex-grow: 1, flex-shrink: 1 */
     min-height: 120px;
-    /* 180pxから120pxに減らして、より縮小できるようにする */
+    /* 180px縺九ｉ120px縺ｫ貂帙ｉ縺励※縲√ｈ繧顔ｸｮ蟆上〒縺阪ｋ繧医≧縺ｫ縺吶ｋ */
     background-size: cover;
     background-position: center;
     background-image: linear-gradient(to bottom, #2b32b2, #1488cc);
@@ -120,7 +120,7 @@ body {
 
 .enemy {
     width: 65px;
-    /* 80pxから65pxに縮封E*/
+    /* 80px縺九ｉ65px縺ｫ邵ｮ蟆・*/
     height: 65px;
     position: relative;
     transition: transform 0.2s, box-shadow 0.2s;
@@ -134,7 +134,7 @@ body {
 }
 
 .enemy.targeted::after {
-    content: '▼';
+    content: '\25bc';
     position: absolute;
     top: -40px;
     left: 50%;
@@ -157,7 +157,7 @@ body {
 .enemy-timer {
     position: absolute;
     top: -38px;
-    /* さらに上に移勁E*/
+    /* 縺輔ｉ縺ｫ荳翫↓遘ｻ蜍・*/
     left: 50%;
     transform: translateX(-50%);
     background: rgba(0, 0, 0, 0.7);
@@ -252,7 +252,7 @@ body {
 #board-area {
     background-color: #111;
     padding: 5px 5px 15px 5px;
-    /* 下部に余白を追加 */
+    /* 荳矩Κ縺ｫ菴咏區繧定ｿｽ蜉� */
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -328,7 +328,7 @@ body {
     background-color: #000;
     gap: 2px;
     touch-action: none;
-    /* ブラウザ標準�EタチE��アクション無効匁E*/
+    /* 繝悶Λ繧ｦ繧ｶ讓呎ｺ悶・繧ｿ繝・メ繧｢繧ｯ繧ｷ繝ｧ繝ｳ辟｡蜉ｹ蛹・*/
     position: relative;
     overflow: hidden;
 }
@@ -341,14 +341,14 @@ body {
     justify-content: center;
     align-items: center;
     font-size: 20px;
-    /* 仮の斁E��表示用 */
+    /* 莉ｮ縺ｮ譁・ｭ苓｡ｨ遉ｺ逕ｨ */
     cursor: pointer;
     transition: transform 0.1s, opacity 0.2s;
     background-size: 90%;
     background-position: center;
     background-repeat: no-repeat;
     position: relative;
-    /* z-index用 */
+    /* z-index逕ｨ */
 }
 
 .orb.dragging {
@@ -409,7 +409,7 @@ body {
 }
 
 .orb.square::after {
-    content: '♥';
+    content: '\2665';
     font-size: 30px;
     color: white;
     text-shadow: 0 0 5px #ff0066;
@@ -434,7 +434,7 @@ body {
 .status-effect {
     position: absolute;
     top: 1px;
-    /* 2pxから1pxに微調整 */
+    /* 2px縺九ｉ1px縺ｫ蠕ｮ隱ｿ謨ｴ */
     left: 50%;
     transform: translateX(-50%);
     color: #ff0000;
@@ -645,8 +645,12 @@ button {
     font-size: 24px;
     text-shadow: 2px 2px 0 #000;
     pointer-events: none;
-    animation: floatUp 0.8s ease-out forwards;
+    animation: floatUp 0.4s ease-out forwards;
     z-index: 9999;
+}
+
+.hero-power-active {
+    animation: none !important;
 }
 
 @keyframes floatUp {
@@ -761,7 +765,7 @@ button {
 
     20% {
         transform: scaleY(3);
-        /* 少し太めに */
+        /* 蟆代＠螟ｪ繧√↓ */
         opacity: 1;
     }
 
@@ -1754,59 +1758,60 @@ button {
     box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
     z-index: 5;
 
-/* Fusion UI */
-.fusion-list-container {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-    padding: 10px;
-    max-height: 400px;
-    overflow-y: auto;
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 8px;
-}
+    /* Fusion UI */
+    .fusion-list-container {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        padding: 10px;
+        max-height: 400px;
+        overflow-y: auto;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 8px;
+    }
 
-.fusion-item-card {
-    background: #333;
-    border: 1px solid #555;
-    border-radius: 8px;
-    padding: 8px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 5px;
-    cursor: pointer;
-    transition: transform 0.2s, background 0.2s;
-}
+    .fusion-item-card {
+        background: #333;
+        border: 1px solid #555;
+        border-radius: 8px;
+        padding: 8px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 5px;
+        cursor: pointer;
+        transition: transform 0.2s, background 0.2s;
+    }
 
-.fusion-item-card:hover {
-    background: #444;
-    transform: translateY(-2px);
-    border-color: #ffd700;
-}
+    .fusion-item-card:hover {
+        background: #444;
+        transform: translateY(-2px);
+        border-color: #ffd700;
+    }
 
-.fusion-item-card .fusion-monster-img {
-    width: 50px;
-    height: 50px;
-}
+    .fusion-item-card .fusion-monster-img {
+        width: 50px;
+        height: 50px;
+    }
 
-.fusion-item-card .fusion-monster-img img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-}
+    .fusion-item-card .fusion-monster-img img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
 
-.fusion-item-card .item-name {
-    font-size: 11px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    width: 100%;
-    text-align: center;
-}
+    .fusion-item-card .item-name {
+        font-size: 11px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        width: 100%;
+        text-align: center;
+    }
 
-.fusion-item-card .item-desc {
-    font-size: 12px;
-    color: #ffd700;
-    font-weight: bold;
+    .fusion-item-card .item-desc {
+        font-size: 12px;
+        color: #ffd700;
+        font-weight: bold;
+    }
 }

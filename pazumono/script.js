@@ -80,6 +80,7 @@ class Monster {
         // 特定のモンスターは勇者スキルを固定
         if (this.name === 'モノリス') this.heroSkillType = 1;
         if (this.name === 'ガリ') this.heroSkillType = 2;
+        if (this.name === 'イルミネ') this.heroSkillType = 4;
 
         switch (this.heroSkillType) {
             case 1:
@@ -109,6 +110,13 @@ class Monster {
                     type: 3,
                     desc: "3コンボ:2倍, 7コンボ:6倍, 10コンボ:10倍",
                     // calc handled in Game.processTurn based on comboCount
+                };
+                break;
+            case 4:
+                this.heroSkill = {
+                    type: 4,
+                    desc: "回復ディスク2combo以上で全員の攻撃力が7倍+ダメージを30%軽減",
+                    // calc and damage reduction handled in Game.processTurn/takeDamage
                 };
                 break;
         }
@@ -800,6 +808,8 @@ class Game {
         this.lastGachaResults = [];
         this.gachaCount = 0; // Initialize to prevent NaN
 
+        this.heroPowerEl = null; // 勇者スキル継続表示用
+
         // Load Game Check
         if (localStorage.getItem('pazumono_save_data')) {
             const contBtn = document.getElementById('continue-btn');
@@ -811,6 +821,34 @@ class Game {
                 this.modal.classList.add('hidden');
                 this.loadGame();
             };
+        }
+    }
+
+    showHeroPowerText(multiplier) {
+        if (!this.party[0] || !this.party[0].el) return;
+
+        if (!this.heroPowerEl) {
+            this.heroPowerEl = document.createElement('div');
+            this.heroPowerEl.className = 'damage-text hero-power-active';
+            const container = document.getElementById('game-container');
+            container.appendChild(this.heroPowerEl);
+        }
+
+        this.heroPowerEl.textContent = `勇者スキル発動 x${multiplier}!`;
+        this.heroPowerEl.style.color = '#ffd700';
+
+        const rect = this.party[0].el.getBoundingClientRect();
+        const container = document.getElementById('game-container');
+        const containerRect = container.getBoundingClientRect();
+
+        this.heroPowerEl.style.left = (rect.left - containerRect.left + rect.width / 2) + 'px';
+        this.heroPowerEl.style.top = (rect.top - containerRect.top - 20) + 'px';
+    }
+
+    removeHeroPowerText() {
+        if (this.heroPowerEl) {
+            this.heroPowerEl.remove();
+            this.heroPowerEl = null;
         }
     }
 
@@ -1319,6 +1357,7 @@ class Game {
         // Render Party UI (No data reset!)
         this.partyContainer.innerHTML = '';
         this.party.forEach((m, index) => {
+            if (!m) return; // Skip empty slots
             const div = document.createElement('div');
             div.className = 'party-member';
             div.style.borderColor = this.getElementColor(m.element);
@@ -1495,6 +1534,10 @@ class Game {
             case 'convert_dual':
                 this.board.convertDual(skill.color1, skill.color2);
                 break;
+            case 'spawn_dual':
+                this.board.spawnOrbs(skill.color1, skill.count1);
+                this.board.spawnOrbs(skill.color2, skill.count2);
+                break;
             case 'damage_col_convert':
                 this.dealSkillDamage(skill.val, monster, 'all');
                 this.board.convertColumns([0, 5], skill.color);
@@ -1517,6 +1560,12 @@ class Game {
         // スキルの演出待ち
         await new Promise(r => setTimeout(r, 800));
         await this.checkLevelClear(false); // スキル使用時はターンを経過させない
+
+        // パーティがクリア演出等で消えていないか再確認
+        if (this.party.length > 0) {
+            this.renderPartyUI();
+        }
+
         this.isProcessing = false;
     }
 
@@ -1707,6 +1756,7 @@ class Game {
             this.heroMultiplier = 1.0;
 
             let comboCount = 0;
+            let heartComboCount = 0;
             let totalDamage = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
             let totalHeal = 0;
             let aoeFlags = { 0: false, 1: false, 2: false, 3: false, 4: false, 5: false };
@@ -1731,11 +1781,15 @@ class Game {
                     const hero = this.party[0];
                     if (hero && hero.heroSkillType === 1) {
                         const mult = hero.heroSkill.calc(type, count);
-                        this.heroMultiplier = Math.max(this.heroMultiplier, mult);
+                        if (mult > 1.0) {
+                            this.heroMultiplier = Math.max(this.heroMultiplier, mult);
+                            this.showHeroPowerText(this.heroMultiplier);
+                        }
                     }
 
                     if (type === ELEMENTS.HEART) {
                         totalHeal += 100 * (count / 3);
+                        heartComboCount++;
                     } else if (type <= 5) {
                         totalDamage[type] += 10 * (count / 3);
                         if (count >= CONFIG.aoeThreshold) {
@@ -1747,6 +1801,42 @@ class Game {
                     typeCounts[type] += group.coords.length;
                     const naturalOrbs = group.coords.filter(({ r, c }) => !this.board.grid[r][c].isSkillGenerated);
                     gutsCounts[type] += naturalOrbs.length;
+
+                    // 勇者スキル判定 (タイプ2: ガリ等 / タイプ3 / タイプ4) - コンボ中にも判定
+                    if (hero) {
+                        if (hero.heroSkillType === 2) {
+                            const uniqueTypes = new Set(Object.keys(typeCounts).filter(t => typeCounts[t] > 0 && parseInt(t) <= 5));
+                            const hasHeart = typeCounts[ELEMENTS.HEART] > 0;
+                            const count = uniqueTypes.size;
+                            let mult = 1.0;
+                            if (count === 3) mult = 2.0;
+                            else if (count === 4) mult = 3.0;
+                            else if (count >= 5) mult = (hasHeart ? 7.0 : 5.0);
+
+                            if (mult > this.heroMultiplier) {
+                                this.heroMultiplier = mult;
+                                this.showHeroPowerText(this.heroMultiplier);
+                            }
+                        } else if (hero.heroSkillType === 3) {
+                            let mult = 1.0;
+                            if (comboCount >= 10) mult = 10.0;
+                            else if (comboCount >= 7) mult = 6.0;
+                            else if (comboCount >= 3) mult = 2.0;
+
+                            if (mult > this.heroMultiplier) {
+                                this.heroMultiplier = mult;
+                                this.showHeroPowerText(this.heroMultiplier);
+                            }
+                        } else if (hero.heroSkillType === 4) {
+                            if (heartComboCount >= 2) {
+                                if (this.heroMultiplier < 7.0) {
+                                    this.heroMultiplier = 7.0;
+                                    this.damageShield = 0.7; // 30% reduction
+                                    this.showHeroPowerText(this.heroMultiplier);
+                                }
+                            }
+                        }
+                    }
 
                     this.updateComboUI(comboCount);
                     await this.board.fadeOrbs(group.coords);
@@ -1764,30 +1854,6 @@ class Game {
             // Note: スキルで貼られたシールドは維持される
 
             if (comboCount > 0) {
-                // 勇者スキル倍率計算 (タイプ2: ガリ等 / タイプ3)
-                const hero = this.party[0];
-                if (hero) {
-                    if (hero.heroSkillType === 2) {
-                        const uniqueTypes = new Set(Object.keys(typeCounts).filter(t => typeCounts[t] > 0 && parseInt(t) <= 5));
-                        const hasHeart = typeCounts[ELEMENTS.HEART] > 0;
-                        const count = uniqueTypes.size;
-                        let mult = 1.0;
-                        if (count === 3) mult = 2.0;
-                        else if (count === 4) mult = 3.0;
-                        else if (count >= 5) mult = (hasHeart ? 7.0 : 5.0);
-                        this.heroMultiplier = mult;
-                    } else if (hero.heroSkillType === 3) {
-                        let mult = 1.0;
-                        if (comboCount >= 10) mult = 10.0;
-                        else if (comboCount >= 7) mult = 6.0;
-                        else if (comboCount >= 3) mult = 2.0;
-                        this.heroMultiplier = mult;
-                    }
-                }
-
-                if (this.heroMultiplier > 1.0) {
-                    this.showDamageText(`勇者パワー x${this.heroMultiplier}!`, '#ffd700', document.getElementById('battle-area'));
-                }
                 if (comboCount >= 7) {
                     this.showDamageText(`7 COMBO BONUS x2!`, '#ff3366', document.getElementById('battle-area'));
                 }
@@ -1812,6 +1878,7 @@ class Game {
         } catch (e) {
             console.error("Turn Error:", e);
         } finally {
+            this.removeHeroPowerText();
             this.isProcessing = false;
         }
     }
@@ -2051,10 +2118,10 @@ class Game {
         const containerRect = container.getBoundingClientRect();
 
         div.style.left = (rect.left - containerRect.left + rect.width / 2) + 'px';
-        div.style.top = (rect.top - containerRect.top) + 'px';
+        div.style.top = (rect.top - containerRect.top - 20) + 'px'; // 要素の少し上に表示
 
         container.appendChild(div);
-        setTimeout(() => div.remove(), 1000);
+        setTimeout(() => div.remove(), 600);
     }
 
     spawnHitEffect(targetEl) {
@@ -2302,7 +2369,7 @@ class Game {
             gachaDiv.style.border = '2px solid #ffd700';
             gachaDiv.innerHTML = `
                 <div class="item-info">
-                    <div class="item-name" style="color:#ffd700">★ モンスターガチャ (5連)</div>
+                    <div class="item-name" style="color:#ffd700">★ モンスターガチャ (10連)</div>
                     <div class="item-desc">新たな仲間を召喚する！</div>
                     <div class="item-price">${cost.toLocaleString()} G</div>
                 </div>
@@ -2315,7 +2382,7 @@ class Game {
                     this.scoreEl.textContent = this.score;
                     scoreInfo.textContent = `所持金: ${this.score} G`;
                     this.shopOverlay.classList.add('hidden');
-                    this.drawGacha(5, false);
+                    this.drawGacha(10, false);
                 }
             };
             this.shopItemsEl.appendChild(gachaDiv);
@@ -2440,7 +2507,11 @@ class Game {
             } else {
                 list.forEach(m => {
                     const card = this.createFusionCard(m);
-                    card.onclick = () => this.showFusionMenu('select_material', m);
+                    card.onclick = (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        this.showFusionMenu('select_material', m);
+                    };
                     container.appendChild(card);
                 });
             }
@@ -2452,7 +2523,11 @@ class Game {
 
             list.forEach(m => {
                 const card = this.createFusionCard(m);
-                card.onclick = () => this.confirmFusion(baseMonster, m);
+                card.onclick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.confirmFusion(baseMonster, m);
+                };
                 container.appendChild(card);
             });
         }
@@ -2461,15 +2536,17 @@ class Game {
     createFusionCard(monster) {
         const div = document.createElement('div');
         div.className = 'shop-item fusion-item-card';
+        div.style.pointerEvents = 'auto'; // クリック可能であることを確実にする
         div.innerHTML = `
-            <div class="fusion-monster-img">
+            <div class="fusion-monster-img" style="pointer-events: none;">
                 <img src="${IMAGE_PATH + monster.img}" alt="${monster.name}">
             </div>
-            <div class="item-info">
+            <div class="item-info" style="pointer-events: none;">
                 <div class="item-name">${monster.name}</div>
                 <div class="item-desc">★${monster.rarity}</div>
             </div>
         `;
+        // 要素内の子要素ではなく、カード自体でクリックを受け取るように調整
         return div;
     }
 
